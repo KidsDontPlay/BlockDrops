@@ -4,7 +4,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Random;
 import java.util.Set;
 
 import mezz.jei.api.IGuiHelper;
@@ -19,18 +18,21 @@ import mezz.jei.api.gui.IDrawable;
 import mezz.jei.api.gui.IGuiItemStackGroup;
 import mezz.jei.api.gui.IRecipeLayout;
 import mezz.jei.api.gui.ITooltipCallback;
-import mezz.jei.api.recipe.BlankRecipeWrapper;
 import mezz.jei.api.recipe.BlankRecipeCategory;
+import mezz.jei.api.recipe.BlankRecipeWrapper;
 import mezz.jei.api.recipe.IRecipeHandler;
 import mezz.jei.api.recipe.IRecipeWrapper;
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockAnvil;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.BlockPos;
+import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.StatCollector;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -66,8 +68,7 @@ public class Plugin implements IModPlugin {
 		}
 
 		IBlockState getState() {
-			// int m = block instanceof BlockAnvil ? meta << 2 : meta;
-			int m = meta;
+			int m = block instanceof BlockAnvil ? meta << 2 : meta;
 			return block.onBlockPlaced(Minecraft.getMinecraft().theWorld, BlockPos.ORIGIN, EnumFacing.UP, 0, 0, 0, m, Minecraft.getMinecraft().thePlayer);
 		}
 
@@ -99,38 +100,89 @@ public class Plugin implements IModPlugin {
 			}
 		});
 		for (BlockWrapper w : x) {
-			Block b = w.block;
-			IBlockState state = w.getState();
-			List<ItemStack> list = Lists.newArrayList();
-			for (int i = 0; i < 1000; i++) {
-				List<ItemStack> lis = b.getDrops(Minecraft.getMinecraft().theWorld, BlockPos.ORIGIN, state, 3);
-				// if (lis.size() > list.size())
-				// list = lis;
-				list.addAll(lis);
-			}
-			list.removeAll(Collections.singleton(null));
-			Iterator<ItemStack> it = list.iterator();
-			while (it.hasNext()) {
-				ItemStack tmp = it.next();
-				if (tmp.isItemEqual(w.getStack()))
-					it.remove();
-			}
-//			list = merge(list);
-			if (list.isEmpty())
+			List<Drop> drops = getList(w);
+			if (drops.isEmpty())
 				continue;
-			if (w.getStack().getItem() == null)
-				continue;
-			List<Drop> ds = Lists.newArrayList();
-			for (ItemStack s : list)
-				ds.add(new Drop(s, new Random().nextFloat()));
-			res.add(new Wrapper(w.getStack(), ds));
+			res.add(new Wrapper(w.getStack(), drops));
 		}
 		return res;
 
 	}
 
-	private List<Drop> getList(IBlockState state) {
+	private List<Drop> getList(BlockWrapper wrap) {
 		List<Drop> drops = Lists.newArrayList();
+		if (wrap.getStack().getItem() == null)
+			return drops;
+		List<StackWrapper> stacks0 = Lists.newArrayList(), stacks1 = Lists.newArrayList(), stacks2 = Lists.newArrayList(), stacks3 = Lists.newArrayList();
+		final int num = 6000;
+		for (int i = 0; i < num; i++) {
+			for (int j = 0; j < 4; j++) {
+				List<ItemStack> lis = wrap.block.getDrops(Minecraft.getMinecraft().theWorld, BlockPos.ORIGIN, wrap.getState(), j);
+				for (ItemStack s : lis) {
+					if (s == null)
+						continue;
+					switch (j) {
+					case 0:
+						stacks0 = add(stacks0, s);
+						break;
+					case 1:
+						stacks1 = add(stacks1, s);
+						break;
+					case 2:
+						stacks2 = add(stacks2, s);
+						break;
+					case 3:
+						stacks3 = add(stacks3, s);
+						break;
+					}
+				}
+			}
+		}
+		Iterator<StackWrapper> it0 = stacks0.iterator();
+		while (it0.hasNext()) {
+			StackWrapper tmp = it0.next();
+			if (tmp.stack.isItemEqual(wrap.getStack()))
+				it0.remove();
+		}
+		Iterator<StackWrapper> it1 = stacks1.iterator();
+		while (it1.hasNext()) {
+			StackWrapper tmp = it1.next();
+			if (tmp.stack.isItemEqual(wrap.getStack()))
+				it1.remove();
+		}
+		Iterator<StackWrapper> it2 = stacks2.iterator();
+		while (it2.hasNext()) {
+			StackWrapper tmp = it2.next();
+			if (tmp.stack.isItemEqual(wrap.getStack()))
+				it2.remove();
+		}
+		Iterator<StackWrapper> it3 = stacks3.iterator();
+		while (it3.hasNext()) {
+			StackWrapper tmp = it3.next();
+			if (tmp.stack.isItemEqual(wrap.getStack()))
+				it3.remove();
+		}
+		Comparator<StackWrapper> comp = new Comparator<Plugin.StackWrapper>() {
+			@Override
+			public int compare(StackWrapper o1, StackWrapper o2) {
+				return o1.stack.toString().compareTo(o2.stack.toString());
+			}
+		};
+		stacks0.sort(comp);
+		stacks1.sort(comp);
+		stacks2.sort(comp);
+		stacks3.sort(comp);
+		if (!(stacks0.size() == stacks1.size() && stacks1.size() == stacks2.size() && stacks2.size() == stacks3.size()))
+			throw new RuntimeException("bug");
+		for (int i = 0; i < stacks0.size(); i++) {
+			float s0 = 100 * ((float) stacks0.get(i).num / (float) num);
+			float s1 = 100 * ((float) stacks1.get(i).num / (float) num);
+			float s2 = 100 * ((float) stacks2.get(i).num / (float) num);
+			float s3 = 100 * ((float) stacks3.get(i).num / (float) num);
+			drops.add(new Drop(stacks0.get(i).stack, s0, s1, s2, s3));
+		}
+		return drops;
+
 	}
 
 	static class StackWrapper {
@@ -150,35 +202,32 @@ public class Plugin implements IModPlugin {
 			this.num = num;
 		}
 
-	}
-
-	private List<StackWrapper> merge(List<StackWrapper> lis) {
-		List<StackWrapper> res = Lists.newArrayList();
-		for (StackWrapper s : lis) {
-			int contains = contains(res, s);
-			if (contains == -1)
-				res.add(s);
-			else {
-				StackWrapper tmp = res.get(contains);
-				tmp.num += s.num;
-				res.set(contains, tmp);
-			}
+		@Override
+		public String toString() {
+			return "StackWrapper [stack=" + stack + ", num=" + num + "]";
 		}
-		return res;
+
 	}
 
-	private int contains(List<StackWrapper> lis, StackWrapper stack) {
+	private int contains(List<StackWrapper> lis, ItemStack stack) {
 		for (int i = 0; i < lis.size(); i++)
-			if (lis.get(i).stack.isItemEqual(stack.stack))
+			if (lis.get(i).stack.isItemEqual(stack))
 				return i;
 		return -1;
 	}
-	
-	private void add(List<StackWrapper> lis, StackWrapper stack) {
-		for (int i = 0; i < lis.size(); i++)
-			if (lis.get(i).stack.isItemEqual(stack.stack))
-				return i;
-		return -1;
+
+	private List<StackWrapper> add(List<StackWrapper> lis, ItemStack stack) {
+		if (lis == null)
+			lis = Lists.newArrayList();
+		int con = contains(lis, stack);
+		if (con == -1)
+			lis.add(new StackWrapper(stack, stack.stackSize));
+		else {
+			StackWrapper tmp = lis.get(con);
+			tmp.num += stack.stackSize;
+			lis.set(con, tmp);
+		}
+		return lis;
 	}
 
 	@Override
@@ -220,17 +269,31 @@ public class Plugin implements IModPlugin {
 			return lis;
 		}
 
-		private float chance(ItemStack s) {
+		private float chance(ItemStack s, int fortune) {
 			for (Drop d : out)
-				if (d.out.isItemEqual(s))
-					return d.chance;
+				if (d.out.isItemEqual(s)) {
+					switch (fortune) {
+					case 0:
+						return d.chance0;
+					case 1:
+						return d.chance1;
+					case 2:
+						return d.chance2;
+					case 3:
+						return d.chance3;
+					default:
+						break;
+					}
+				}
 			return 0f;
 		}
 
 		@Override
 		public void onTooltip(int slotIndex, boolean input, ItemStack ingredient, List<String> tooltip) {
-			if (!input)
-				tooltip.add(chance(ingredient) + " %");
+			if (!input) {
+				long x = (System.currentTimeMillis() / 1500l) % 4;
+				tooltip.add(EnumChatFormatting.BLUE + "Fortune " + (StatCollector.canTranslate("enchantment.level." + x) ? StatCollector.translateToLocal("enchantment.level." + x) : 0) + " " + EnumChatFormatting.GRAY + String.format("%.1f", chance(ingredient, (int) x)) + " %");
+			}
 		}
 
 	}
@@ -299,19 +362,36 @@ public class Plugin implements IModPlugin {
 
 	static class Drop {
 		ItemStack out;
-		float chance;
+		float chance0, chance1, chance2, chance3;
 
 		@Override
 		public boolean equals(Object obj) {
-			if (obj instanceof Drop)
-				return out.isItemEqual(((Drop) obj).out) && chance == ((Drop) obj).chance;
-			return false;
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			Drop other = (Drop) obj;
+			if (!out.isItemEqual(other.out))
+				return false;
+			if (Float.floatToIntBits(chance0) != Float.floatToIntBits(other.chance0))
+				return false;
+			if (Float.floatToIntBits(chance1) != Float.floatToIntBits(other.chance1))
+				return false;
+			if (Float.floatToIntBits(chance2) != Float.floatToIntBits(other.chance2))
+				return false;
+			if (Float.floatToIntBits(chance3) != Float.floatToIntBits(other.chance3))
+				return false;
+			return true;
 		}
 
-		public Drop(ItemStack out, float chance) {
-			super();
+		public Drop(ItemStack out, float chance0, float chance1, float chance2, float chance3) {
 			this.out = out;
-			this.chance = chance;
+			this.chance0 = chance0;
+			this.chance1 = chance1;
+			this.chance2 = chance2;
+			this.chance3 = chance3;
 		}
 
 	}
