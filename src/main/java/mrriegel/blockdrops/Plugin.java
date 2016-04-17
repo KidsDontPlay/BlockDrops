@@ -71,9 +71,9 @@ public class Plugin implements IModPlugin {
 		Set<BlockWrapper> blocks = Sets.newHashSet();
 		for (ResourceLocation r : Block.blockRegistry.getKeys()) {
 			Block b = Block.blockRegistry.getObject(r);
-			List<ItemStack> lis = Lists.newArrayList();
 			if (Item.getItemFromBlock(b) == null || b.getCreativeTabToDisplayOn() == null)
 				continue;
+			List<ItemStack> lis = Lists.newArrayList();
 			b.getSubBlocks(Item.getItemFromBlock(b), b.getCreativeTabToDisplayOn(), lis);
 			for (ItemStack s : lis)
 				blocks.add(new BlockWrapper(b, s.getItemDamage()));
@@ -102,8 +102,8 @@ public class Plugin implements IModPlugin {
 		if (wrap.getStack().getItem() == null)
 			return drops;
 		List<StackWrapper> stacks0 = Lists.newArrayList(), stacks1 = Lists.newArrayList(), stacks2 = Lists.newArrayList(), stacks3 = Lists.newArrayList();
-		final int count = 6000;
-		for (int i = 0; i < count; i++) {
+
+		for (int i = 0; i < BlockDrops.iteration; i++) {
 			for (int j = 0; j < 4; j++) {
 				List<ItemStack> lis = wrap.block.getDrops(Minecraft.getMinecraft().theWorld, BlockPos.ORIGIN, wrap.getState(), j);
 				for (ItemStack s : lis) {
@@ -111,27 +111,22 @@ public class Plugin implements IModPlugin {
 						continue;
 					switch (j) {
 					case 0:
-						stacks0 = add(stacks0, s);
+						add(stacks0, s);
 						break;
 					case 1:
-						stacks1 = add(stacks1, s);
+						add(stacks1, s);
 						break;
 					case 2:
-						stacks2 = add(stacks2, s);
+						add(stacks2, s);
 						break;
 					case 3:
-						stacks3 = add(stacks3, s);
+						add(stacks3, s);
 						break;
 					}
 				}
 			}
 		}
-		Iterator<StackWrapper> it3 = stacks3.iterator();
-		while (it3.hasNext()) {
-			StackWrapper tmp = it3.next();
-			if (tmp.stack.isItemEqual(wrap.getStack()))
-				it3.remove();
-		}
+
 		Comparator<StackWrapper> comp = new Comparator<Plugin.StackWrapper>() {
 			@Override
 			public int compare(StackWrapper o1, StackWrapper o2) {
@@ -140,27 +135,44 @@ public class Plugin implements IModPlugin {
 				return id != 0 ? id : meta;
 			}
 		};
-		stacks3.sort(comp);
-		// if (!(stacks0.size() == stacks1.size() && stacks1.size() ==
-		// stacks2.size() && stacks2.size() == stacks3.size()))
-		// throw new RuntimeException("bug");
-		for (int i = 0; i < stacks3.size(); i++) {
-			StackWrapper stack = stacks3.get(i);
-			float s3 = 100F * ((float) stack.size / (float) count);
-			float s0 = getChance(stacks0, stack.stack, count);
-			float s1 = getChance(stacks1, stack.stack, count);
-			float s2 = getChance(stacks2, stack.stack, count);
-			drops.add(new Drop(stacks3.get(i).stack, s0, s1, s2, s3));
+
+		List<StackWrapper> stacks = Lists.newArrayList();
+		for (StackWrapper w : stacks0)
+			add(stacks, w.stack);
+		for (StackWrapper w : stacks1)
+			add(stacks, w.stack);
+		for (StackWrapper w : stacks2)
+			add(stacks, w.stack);
+		for (StackWrapper w : stacks3)
+			add(stacks, w.stack);
+
+		if (!BlockDrops.all) {
+			Iterator<StackWrapper> it = stacks.iterator();
+			while (it.hasNext()) {
+				StackWrapper tmp = it.next();
+				if (tmp.stack.isItemEqual(wrap.getStack()))
+					it.remove();
+			}
+		}
+		stacks.sort(comp);
+
+		for (int i = 0; i < stacks.size(); i++) {
+			StackWrapper stack = stacks.get(i);
+			float s0 = getChance(stacks0, stack.stack);
+			float s1 = getChance(stacks1, stack.stack);
+			float s2 = getChance(stacks2, stack.stack);
+			float s3 = getChance(stacks3, stack.stack);
+			drops.add(new Drop(stack.stack, s0, s1, s2, s3));
 		}
 		return drops;
 
 	}
 
-	private float getChance(List<StackWrapper> stacks, ItemStack stack, int count) {
+	private float getChance(List<StackWrapper> stacks, ItemStack stack) {
 		int con = contains(stacks, stack);
 		if (con == -1)
 			return 0F;
-		return 100F * ((float) stacks.get(con).size / (float) count);
+		return 100F * ((float) stacks.get(con).size / (float) BlockDrops.iteration);
 	}
 
 	static class StackWrapper {
@@ -237,8 +249,6 @@ public class Plugin implements IModPlugin {
 			if (getClass() != obj.getClass())
 				return false;
 			Drop other = (Drop) obj;
-			if (!out.isItemEqual(other.out))
-				return false;
 			if (Float.floatToIntBits(chance0) != Float.floatToIntBits(other.chance0))
 				return false;
 			if (Float.floatToIntBits(chance1) != Float.floatToIntBits(other.chance1))
@@ -246,6 +256,11 @@ public class Plugin implements IModPlugin {
 			if (Float.floatToIntBits(chance2) != Float.floatToIntBits(other.chance2))
 				return false;
 			if (Float.floatToIntBits(chance3) != Float.floatToIntBits(other.chance3))
+				return false;
+			if (out == null) {
+				if (other.out != null)
+					return false;
+			} else if (!out.isItemEqual(other.out))
 				return false;
 			return true;
 		}
