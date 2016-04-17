@@ -1,5 +1,9 @@
 package mrriegel.blockdrops;
 
+import net.minecraft.entity.monster.EntityCreeper;
+import net.minecraft.init.Blocks;
+import net.minecraft.util.BlockPos;
+import net.minecraft.util.EnumFacing;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventHandler;
 import net.minecraftforge.fml.common.Mod.Instance;
@@ -26,6 +30,12 @@ public class BlockDrops {
 
 	@EventHandler
 	public void postInit(FMLPostInitializationEvent event) {
+		EntityCreeper c = new EntityCreeper(null);
+		System.out.println("zik");
+		System.out.println(Blocks.anvil.onBlockPlaced(null, BlockPos.ORIGIN, EnumFacing.DOWN, 0, 0, 0, 0, c));
+		System.out.println(Blocks.anvil.onBlockPlaced(null, BlockPos.ORIGIN, EnumFacing.DOWN, 0, 0, 0, 2, c));
+		System.out.println(Blocks.anvil.onBlockPlaced(null, BlockPos.ORIGIN, EnumFacing.DOWN, 0, 0, 0, 4, c));
+
 	}
 
 }

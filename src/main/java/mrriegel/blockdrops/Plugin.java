@@ -1,12 +1,10 @@
 package mrriegel.blockdrops;
 
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import mezz.jei.api.IGuiHelper;
 import mezz.jei.api.IItemRegistry;
 import mezz.jei.api.IJeiHelpers;
 import mezz.jei.api.IJeiRuntime;
@@ -14,14 +12,6 @@ import mezz.jei.api.IModPlugin;
 import mezz.jei.api.IModRegistry;
 import mezz.jei.api.IRecipeRegistry;
 import mezz.jei.api.JEIPlugin;
-import mezz.jei.api.gui.IDrawable;
-import mezz.jei.api.gui.IGuiItemStackGroup;
-import mezz.jei.api.gui.IRecipeLayout;
-import mezz.jei.api.gui.ITooltipCallback;
-import mezz.jei.api.recipe.BlankRecipeCategory;
-import mezz.jei.api.recipe.BlankRecipeWrapper;
-import mezz.jei.api.recipe.IRecipeHandler;
-import mezz.jei.api.recipe.IRecipeWrapper;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockAnvil;
 import net.minecraft.block.state.IBlockState;
@@ -29,10 +19,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.BlockPos;
-import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.StatCollector;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -114,8 +102,8 @@ public class Plugin implements IModPlugin {
 		if (wrap.getStack().getItem() == null)
 			return drops;
 		List<StackWrapper> stacks0 = Lists.newArrayList(), stacks1 = Lists.newArrayList(), stacks2 = Lists.newArrayList(), stacks3 = Lists.newArrayList();
-		final int num = 6000;
-		for (int i = 0; i < num; i++) {
+		final int count = 6000;
+		for (int i = 0; i < count; i++) {
 			for (int j = 0; j < 4; j++) {
 				List<ItemStack> lis = wrap.block.getDrops(Minecraft.getMinecraft().theWorld, BlockPos.ORIGIN, wrap.getState(), j);
 				for (ItemStack s : lis) {
@@ -138,24 +126,6 @@ public class Plugin implements IModPlugin {
 				}
 			}
 		}
-		Iterator<StackWrapper> it0 = stacks0.iterator();
-		while (it0.hasNext()) {
-			StackWrapper tmp = it0.next();
-			if (tmp.stack.isItemEqual(wrap.getStack()))
-				it0.remove();
-		}
-		Iterator<StackWrapper> it1 = stacks1.iterator();
-		while (it1.hasNext()) {
-			StackWrapper tmp = it1.next();
-			if (tmp.stack.isItemEqual(wrap.getStack()))
-				it1.remove();
-		}
-		Iterator<StackWrapper> it2 = stacks2.iterator();
-		while (it2.hasNext()) {
-			StackWrapper tmp = it2.next();
-			if (tmp.stack.isItemEqual(wrap.getStack()))
-				it2.remove();
-		}
 		Iterator<StackWrapper> it3 = stacks3.iterator();
 		while (it3.hasNext()) {
 			StackWrapper tmp = it3.next();
@@ -165,46 +135,54 @@ public class Plugin implements IModPlugin {
 		Comparator<StackWrapper> comp = new Comparator<Plugin.StackWrapper>() {
 			@Override
 			public int compare(StackWrapper o1, StackWrapper o2) {
-				return o1.stack.toString().compareTo(o2.stack.toString());
+				int id = Integer.compare(Item.getIdFromItem(o1.stack.getItem()), Item.getIdFromItem(o2.stack.getItem()));
+				int meta = Integer.compare(o1.stack.getItemDamage(), o2.stack.getItemDamage());
+				return id != 0 ? id : meta;
 			}
 		};
-		stacks0.sort(comp);
-		stacks1.sort(comp);
-		stacks2.sort(comp);
 		stacks3.sort(comp);
-		if (!(stacks0.size() == stacks1.size() && stacks1.size() == stacks2.size() && stacks2.size() == stacks3.size()))
-			throw new RuntimeException("bug");
-		for (int i = 0; i < stacks0.size(); i++) {
-			float s0 = 100 * ((float) stacks0.get(i).num / (float) num);
-			float s1 = 100 * ((float) stacks1.get(i).num / (float) num);
-			float s2 = 100 * ((float) stacks2.get(i).num / (float) num);
-			float s3 = 100 * ((float) stacks3.get(i).num / (float) num);
-			drops.add(new Drop(stacks0.get(i).stack, s0, s1, s2, s3));
+		// if (!(stacks0.size() == stacks1.size() && stacks1.size() ==
+		// stacks2.size() && stacks2.size() == stacks3.size()))
+		// throw new RuntimeException("bug");
+		for (int i = 0; i < stacks3.size(); i++) {
+			StackWrapper stack = stacks3.get(i);
+			float s3 = 100F * ((float) stack.size / (float) count);
+			float s0 = getChance(stacks0, stack.stack, count);
+			float s1 = getChance(stacks1, stack.stack, count);
+			float s2 = getChance(stacks2, stack.stack, count);
+			drops.add(new Drop(stacks3.get(i).stack, s0, s1, s2, s3));
 		}
 		return drops;
 
 	}
 
+	private float getChance(List<StackWrapper> stacks, ItemStack stack, int count) {
+		int con = contains(stacks, stack);
+		if (con == -1)
+			return 0F;
+		return 100F * ((float) stacks.get(con).size / (float) count);
+	}
+
 	static class StackWrapper {
 		ItemStack stack;
-		int num;
+		int size;
 
 		@Override
 		public boolean equals(Object obj) {
 			if (obj instanceof Drop)
-				return stack.isItemEqual(((StackWrapper) obj).stack) && num == ((StackWrapper) obj).num;
+				return stack.isItemEqual(((StackWrapper) obj).stack) && size == ((StackWrapper) obj).size;
 			return false;
 		}
 
 		public StackWrapper(ItemStack stack, int num) {
 			super();
 			this.stack = stack;
-			this.num = num;
+			this.size = num;
 		}
 
 		@Override
 		public String toString() {
-			return "StackWrapper [stack=" + stack + ", num=" + num + "]";
+			return "StackWrapper [stack=" + stack + ", num=" + size + "]";
 		}
 
 	}
@@ -224,7 +202,7 @@ public class Plugin implements IModPlugin {
 			lis.add(new StackWrapper(stack, stack.stackSize));
 		else {
 			StackWrapper tmp = lis.get(con);
-			tmp.num += stack.stackSize;
+			tmp.size += stack.stackSize;
 			lis.set(con, tmp);
 		}
 		return lis;
@@ -244,120 +222,6 @@ public class Plugin implements IModPlugin {
 
 	@Override
 	public void onRuntimeAvailable(IJeiRuntime jeiRuntime) {
-	}
-
-	public static class Wrapper extends BlankRecipeWrapper implements ITooltipCallback<ItemStack> {
-
-		private ItemStack in;
-		private List<Drop> out;
-
-		public Wrapper(ItemStack in, List<Drop> out) {
-			this.in = in;
-			this.out = out;
-		}
-
-		@Override
-		public List getInputs() {
-			return Collections.singletonList(in);
-		}
-
-		@Override
-		public List getOutputs() {
-			List<ItemStack> lis = Lists.newArrayList();
-			for (Drop d : out)
-				lis.add(d.out);
-			return lis;
-		}
-
-		private float chance(ItemStack s, int fortune) {
-			for (Drop d : out)
-				if (d.out.isItemEqual(s)) {
-					switch (fortune) {
-					case 0:
-						return d.chance0;
-					case 1:
-						return d.chance1;
-					case 2:
-						return d.chance2;
-					case 3:
-						return d.chance3;
-					default:
-						break;
-					}
-				}
-			return 0f;
-		}
-
-		@Override
-		public void onTooltip(int slotIndex, boolean input, ItemStack ingredient, List<String> tooltip) {
-			if (!input) {
-				long x = (System.currentTimeMillis() / 1500l) % 4;
-				tooltip.add(EnumChatFormatting.BLUE + "Fortune " + (StatCollector.canTranslate("enchantment.level." + x) ? StatCollector.translateToLocal("enchantment.level." + x) : 0) + " " + EnumChatFormatting.GRAY + String.format("%.1f", chance(ingredient, (int) x)) + " %");
-			}
-		}
-
-	}
-
-	public static class Handler implements IRecipeHandler<Wrapper> {
-
-		@Override
-		public Class<Wrapper> getRecipeClass() {
-			return Wrapper.class;
-		}
-
-		@Override
-		public String getRecipeCategoryUid() {
-			return BlockDrops.MODID;
-		}
-
-		@Override
-		public IRecipeWrapper getRecipeWrapper(Wrapper recipe) {
-			return recipe;
-		}
-
-		@Override
-		public boolean isRecipeValid(Wrapper recipe) {
-			return !recipe.getOutputs().isEmpty();
-		}
-
-	}
-
-	public static class Category extends BlankRecipeCategory {
-		private final IDrawable background;
-
-		public Category(IGuiHelper h) {
-			background = h.createBlankDrawable(80, 80);
-		}
-
-		@Override
-		public String getUid() {
-			return BlockDrops.MODID;
-		}
-
-		@Override
-		public String getTitle() {
-			return "Block Drops";
-		}
-
-		@Override
-		public IDrawable getBackground() {
-			return background;
-		}
-
-		@Override
-		public void setRecipe(IRecipeLayout recipeLayout, IRecipeWrapper recipeWrapper) {
-			if (!(recipeWrapper instanceof Wrapper))
-				return;
-			IGuiItemStackGroup itemStacks = recipeLayout.getItemStacks();
-			itemStacks.init(0, true, 50, 0);
-			itemStacks.setFromRecipe(0, recipeWrapper.getInputs());
-			itemStacks.addTooltipCallback((ITooltipCallback<ItemStack>) recipeWrapper);
-			for (int i = 0; i < recipeWrapper.getOutputs().size(); i++) {
-				itemStacks.init(i + 1, false, 1 + i * 20, 50);
-				itemStacks.set(i + 1, (ItemStack) recipeWrapper.getOutputs().get(i));
-			}
-
-		}
 	}
 
 	static class Drop {
