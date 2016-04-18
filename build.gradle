@@ -22,7 +22,7 @@ plugins {
 */
 version = "1.8.9-1.0.0"
 group= "mrriegel.blockdrops" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
-archivesBaseName = "BBLOC DROPS"
+archivesBaseName = "Block Drops"
 
 minecraft {
     version = "1.8.9-11.15.1.1808"

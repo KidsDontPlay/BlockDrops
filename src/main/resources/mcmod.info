@@ -1,16 +1,16 @@
 [
 {
-  "modid": "examplemod",
-  "name": "Example Mod",
-  "description": "Example placeholder mod.",
+  "modid": "blockdrops",
+  "name": "Block Drops",
+  "description": "Block Drops (JEI Addon)",
   "version": "${version}",
   "mcversion": "${mcversion}",
   "url": "",
   "updateUrl": "",
-  "authorList": ["ExampleDude"],
-  "credits": "The Forge and FML guys, for making this example",
+  "authorList": ["MrRiegel"],
+  "credits": "The Forge and FML guys",
   "logoFile": "",
   "screenshots": [],
-  "dependencies": []
+  "dependencies": ["JEI"]
 }
 ]
