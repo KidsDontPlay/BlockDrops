@@ -14,9 +14,9 @@ import mezz.jei.api.IModRegistry;
 import mezz.jei.api.IRecipeRegistry;
 import mezz.jei.api.JEIPlugin;
 import net.minecraft.block.Block;
-import net.minecraft.block.BlockAnvil;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
+import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.BlockPos;
@@ -44,7 +44,7 @@ public class Plugin implements IModPlugin {
 		Set<BlockWrapper> blocks = Sets.newHashSet();
 		for (ResourceLocation r : Block.blockRegistry.getKeys()) {
 			Block b = Block.blockRegistry.getObject(r);
-			if (Item.getItemFromBlock(b) == null || b.getCreativeTabToDisplayOn() == null)
+			if (Item.getItemFromBlock(b) == null || b.getCreativeTabToDisplayOn() == null || b == Blocks.bedrock)
 				continue;
 			List<ItemStack> lis = Lists.newArrayList();
 			b.getSubBlocks(Item.getItemFromBlock(b), b.getCreativeTabToDisplayOn(), lis);
@@ -60,6 +60,7 @@ public class Plugin implements IModPlugin {
 				return id != 0 ? id : meta;
 			}
 		});
+
 		for (BlockWrapper w : x) {
 			List<Drop> drops = getList(w);
 			if (drops.isEmpty())
@@ -80,21 +81,22 @@ public class Plugin implements IModPlugin {
 			for (int j = 0; j < 4; j++) {
 				List<ItemStack> lis = wrap.block.getDrops(Minecraft.getMinecraft().theWorld, BlockPos.ORIGIN, wrap.getState(), j);
 
-				if (i % 2 == 0)
-					switch (j) {
-					case 0:
-						add(pairs0, lis);
-						break;
-					case 1:
-						add(pairs1, lis);
-						break;
-					case 2:
-						add(pairs2, lis);
-						break;
-					case 3:
-						add(pairs3, lis);
-						break;
-					}
+				if (BlockDrops.showMinMax)
+					if (i % 2 == 0)
+						switch (j) {
+						case 0:
+							add(pairs0, lis);
+							break;
+						case 1:
+							add(pairs1, lis);
+							break;
+						case 2:
+							add(pairs2, lis);
+							break;
+						case 3:
+							add(pairs3, lis);
+							break;
+						}
 
 				for (ItemStack s : lis) {
 					if (s == null)
@@ -159,6 +161,8 @@ public class Plugin implements IModPlugin {
 	}
 
 	private float getChance(List<StackWrapper> stacks, ItemStack stack) {
+		if (!BlockDrops.showChance)
+			return 0f;
 		int con = contains(stacks, stack);
 		if (con == -1)
 			return 0F;
@@ -283,7 +287,8 @@ public class Plugin implements IModPlugin {
 		public int hashCode() {
 			final int prime = 31;
 			int result = 1;
-			result = prime * result + Item.getIdFromItem(stack.getItem()) + stack.getItemDamage();
+			result = prime * result + Item.getIdFromItem(stack.getItem());
+			result = prime * result + stack.getItemDamage();
 			return result;
 		}
 
@@ -316,7 +321,7 @@ public class Plugin implements IModPlugin {
 		}
 
 		IBlockState getState() {
-			int m = block instanceof BlockAnvil ? meta << 2 : meta;
+			int m = Item.getItemFromBlock(block).getMetadata(meta);
 			return block.onBlockPlaced(Minecraft.getMinecraft().theWorld, BlockPos.ORIGIN, EnumFacing.UP, 0, 0, 0, m, Minecraft.getMinecraft().thePlayer);
 		}
 
