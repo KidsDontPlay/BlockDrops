@@ -44,7 +44,7 @@ public class Plugin implements IModPlugin {
 		Set<BlockWrapper> blocks = Sets.newHashSet();
 		for (ResourceLocation r : Block.blockRegistry.getKeys()) {
 			Block b = Block.blockRegistry.getObject(r);
-			if (Item.getItemFromBlock(b) == null || b.getCreativeTabToDisplayOn() == null || b == Blocks.bedrock)
+			if (Item.getItemFromBlock(b) == null || b == Blocks.bedrock)
 				continue;
 			List<ItemStack> lis = Lists.newArrayList();
 			b.getSubBlocks(Item.getItemFromBlock(b), b.getCreativeTabToDisplayOn(), lis);
@@ -118,7 +118,6 @@ public class Plugin implements IModPlugin {
 				}
 			}
 		}
-
 		Comparator<StackWrapper> comp = new Comparator<Plugin.StackWrapper>() {
 			@Override
 			public int compare(StackWrapper o1, StackWrapper o2) {

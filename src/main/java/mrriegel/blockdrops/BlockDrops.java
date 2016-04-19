@@ -1,9 +1,11 @@
 package mrriegel.blockdrops;
 
+import net.minecraft.init.Blocks;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventHandler;
 import net.minecraftforge.fml.common.Mod.Instance;
+import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 
 @Mod(modid = BlockDrops.MODID, name = BlockDrops.MODNAME, version = BlockDrops.VERSION, dependencies = "after:JEI@[2.0.0,);", clientSideOnly = true)
@@ -31,6 +33,12 @@ public class BlockDrops {
 		if (config.hasChanged()) {
 			config.save();
 		}
+	}
+	
+	@EventHandler
+	public void d(FMLPostInitializationEvent e){
+		for(int i=9;i<130;i++)
+			System.out.println(Blocks.red_mushroom_block.getDrops(null, null, Blocks.red_mushroom_block.getDefaultState(), 0));
 	}
 
 }
