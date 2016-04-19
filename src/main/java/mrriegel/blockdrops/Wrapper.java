@@ -7,14 +7,15 @@ import mezz.jei.api.gui.ITooltipCallback;
 import mezz.jei.api.recipe.BlankRecipeWrapper;
 import mrriegel.blockdrops.Plugin.Drop;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.EnumChatFormatting;
-import net.minecraft.util.StatCollector;
+import net.minecraft.util.text.TextFormatting;
+import net.minecraft.util.text.translation.I18n;
 
 import org.apache.commons.lang3.tuple.Pair;
 
 import com.google.common.collect.Lists;
 
-public class Wrapper extends BlankRecipeWrapper implements ITooltipCallback<ItemStack> {
+public class Wrapper extends BlankRecipeWrapper implements
+		ITooltipCallback<ItemStack> {
 
 	private ItemStack in;
 	private List<Drop> out;
@@ -76,13 +77,21 @@ public class Wrapper extends BlankRecipeWrapper implements ITooltipCallback<Item
 	}
 
 	@Override
-	public void onTooltip(int slotIndex, boolean input, ItemStack ingredient, List<String> tooltip) {
+	public void onTooltip(int slotIndex, boolean input, ItemStack ingredient,
+			List<String> tooltip) {
 		if (!input) {
 			long x = (System.currentTimeMillis() / 1500l) % 4;
-			String chance = BlockDrops.showChance ? String.format("%.1f", chance(ingredient, (int) x)) + " %  " : "";
-			String minmax = BlockDrops.showMinMax ? "Min: " + pair(ingredient, (int) x).getLeft() + "  Max: " + pair(ingredient, (int) x).getRight() : "";
+			String chance = BlockDrops.showChance ? String.format("%.1f",
+					chance(ingredient, (int) x)) + " %  " : "";
+			String minmax = BlockDrops.showMinMax ? "Min: "
+					+ pair(ingredient, (int) x).getLeft() + "  Max: "
+					+ pair(ingredient, (int) x).getRight() : "";
 			if (BlockDrops.showChance || BlockDrops.showMinMax)
-				tooltip.add(EnumChatFormatting.BLUE + "Fortune " + (0l != x ? StatCollector.translateToLocal("enchantment.level." + x) : 0) + " " + EnumChatFormatting.GRAY + chance + minmax);
+				tooltip.add(TextFormatting.BLUE
+						+ "Fortune "
+						+ (0l != x ? I18n.translateToLocal("enchantment.level."
+								+ x) : 0) + " " + TextFormatting.GRAY + chance
+						+ minmax);
 		}
 	}
 }

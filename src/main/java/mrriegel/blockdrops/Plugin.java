@@ -19,9 +19,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.BlockPos;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.math.BlockPos;
 
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -34,7 +34,8 @@ import com.google.common.collect.Sets;
 public class Plugin implements IModPlugin {
 	@Override
 	public void register(IModRegistry registry) {
-		registry.addRecipeCategories(new Category(registry.getJeiHelpers().getGuiHelper()));
+		registry.addRecipeCategories(new Category(registry.getJeiHelpers()
+				.getGuiHelper()));
 		registry.addRecipeHandlers(new Handler());
 		registry.addRecipes(getRecipes());
 	}
@@ -44,10 +45,11 @@ public class Plugin implements IModPlugin {
 		Set<BlockWrapper> blocks = Sets.newHashSet();
 		for (ResourceLocation r : Block.blockRegistry.getKeys()) {
 			Block b = Block.blockRegistry.getObject(r);
-			if (Item.getItemFromBlock(b) == null || b.getCreativeTabToDisplayOn() == null || b == Blocks.bedrock)
+			if (Item.getItemFromBlock(b) == null || b == Blocks.bedrock)
 				continue;
 			List<ItemStack> lis = Lists.newArrayList();
-			b.getSubBlocks(Item.getItemFromBlock(b), b.getCreativeTabToDisplayOn(), lis);
+			b.getSubBlocks(Item.getItemFromBlock(b),
+					b.getCreativeTabToDisplayOn(), lis);
 			for (ItemStack s : lis)
 				blocks.add(new BlockWrapper(b, s.getItemDamage()));
 		}
@@ -55,7 +57,8 @@ public class Plugin implements IModPlugin {
 		x.sort(new Comparator<BlockWrapper>() {
 			@Override
 			public int compare(BlockWrapper o1, BlockWrapper o2) {
-				int id = Integer.compare(Block.getIdFromBlock(o1.block), Block.getIdFromBlock(o2.block));
+				int id = Integer.compare(Block.getIdFromBlock(o1.block),
+						Block.getIdFromBlock(o2.block));
 				int meta = Integer.compare(o1.meta, o2.meta);
 				return id != 0 ? id : meta;
 			}
@@ -75,11 +78,17 @@ public class Plugin implements IModPlugin {
 		List<Drop> drops = Lists.newArrayList();
 		if (wrap.getStack().getItem() == null)
 			return drops;
-		List<StackWrapper> stacks0 = Lists.newArrayList(), stacks1 = Lists.newArrayList(), stacks2 = Lists.newArrayList(), stacks3 = Lists.newArrayList();
-		Map<StackWrapper, Pair<Integer, Integer>> pairs0 = Maps.newHashMap(), pairs1 = Maps.newHashMap(), pairs2 = Maps.newHashMap(), pairs3 = Maps.newHashMap();
+		List<StackWrapper> stacks0 = Lists.newArrayList(), stacks1 = Lists
+				.newArrayList(), stacks2 = Lists.newArrayList(), stacks3 = Lists
+				.newArrayList();
+		Map<StackWrapper, Pair<Integer, Integer>> pairs0 = Maps.newHashMap(), pairs1 = Maps
+				.newHashMap(), pairs2 = Maps.newHashMap(), pairs3 = Maps
+				.newHashMap();
 		for (int i = 0; i < BlockDrops.iteration; i++) {
 			for (int j = 0; j < 4; j++) {
-				List<ItemStack> lis = wrap.block.getDrops(Minecraft.getMinecraft().theWorld, BlockPos.ORIGIN, wrap.getState(), j);
+				List<ItemStack> lis = wrap.block.getDrops(
+						Minecraft.getMinecraft().theWorld, BlockPos.ORIGIN,
+						wrap.getState(), j);
 
 				if (BlockDrops.showMinMax)
 					if (i % 2 == 0)
@@ -122,8 +131,11 @@ public class Plugin implements IModPlugin {
 		Comparator<StackWrapper> comp = new Comparator<Plugin.StackWrapper>() {
 			@Override
 			public int compare(StackWrapper o1, StackWrapper o2) {
-				int id = Integer.compare(Item.getIdFromItem(o1.stack.getItem()), Item.getIdFromItem(o2.stack.getItem()));
-				int meta = Integer.compare(o1.stack.getItemDamage(), o2.stack.getItemDamage());
+				int id = Integer.compare(
+						Item.getIdFromItem(o1.stack.getItem()),
+						Item.getIdFromItem(o2.stack.getItem()));
+				int meta = Integer.compare(o1.stack.getItemDamage(),
+						o2.stack.getItemDamage());
 				return id != 0 ? id : meta;
 			}
 		};
@@ -154,7 +166,8 @@ public class Plugin implements IModPlugin {
 			float s1 = getChance(stacks1, stack.stack);
 			float s2 = getChance(stacks2, stack.stack);
 			float s3 = getChance(stacks3, stack.stack);
-			drops.add(new Drop(stack.stack, s0, s1, s2, s3, pairs0.get(stack), pairs1.get(stack), pairs2.get(stack), pairs3.get(stack)));
+			drops.add(new Drop(stack.stack, s0, s1, s2, s3, pairs0.get(stack),
+					pairs1.get(stack), pairs2.get(stack), pairs3.get(stack)));
 		}
 		return drops;
 
@@ -189,7 +202,8 @@ public class Plugin implements IModPlugin {
 		}
 	}
 
-	private void add(Map<StackWrapper, Pair<Integer, Integer>> map, List<ItemStack> lis) {
+	private void add(Map<StackWrapper, Pair<Integer, Integer>> map,
+			List<ItemStack> lis) {
 		if (map == null)
 			map = Maps.newHashMap();
 		List<StackWrapper> list = Lists.newArrayList();
@@ -200,21 +214,10 @@ public class Plugin implements IModPlugin {
 				map.put(w, new MutablePair<Integer, Integer>(10000, 0));
 			int min = map.get(w).getLeft();
 			int max = map.get(w).getRight();
-			Pair<Integer, Integer> pair = new MutablePair<Integer, Integer>(Math.min(min, w.size), Math.max(max, w.size));
+			Pair<Integer, Integer> pair = new MutablePair<Integer, Integer>(
+					Math.min(min, w.size), Math.max(max, w.size));
 			map.put(w, pair);
 		}
-	}
-
-	@Override
-	public void onJeiHelpersAvailable(IJeiHelpers jeiHelpers) {
-	}
-
-	@Override
-	public void onItemRegistryAvailable(IItemRegistry itemRegistry) {
-	}
-
-	@Override
-	public void onRecipeRegistryAvailable(IRecipeRegistry recipeRegistry) {
 	}
 
 	@Override
@@ -235,13 +238,17 @@ public class Plugin implements IModPlugin {
 			if (getClass() != obj.getClass())
 				return false;
 			Drop other = (Drop) obj;
-			if (Float.floatToIntBits(chance0) != Float.floatToIntBits(other.chance0))
+			if (Float.floatToIntBits(chance0) != Float
+					.floatToIntBits(other.chance0))
 				return false;
-			if (Float.floatToIntBits(chance1) != Float.floatToIntBits(other.chance1))
+			if (Float.floatToIntBits(chance1) != Float
+					.floatToIntBits(other.chance1))
 				return false;
-			if (Float.floatToIntBits(chance2) != Float.floatToIntBits(other.chance2))
+			if (Float.floatToIntBits(chance2) != Float
+					.floatToIntBits(other.chance2))
 				return false;
-			if (Float.floatToIntBits(chance3) != Float.floatToIntBits(other.chance3))
+			if (Float.floatToIntBits(chance3) != Float
+					.floatToIntBits(other.chance3))
 				return false;
 			if (out == null) {
 				if (other.out != null)
@@ -251,7 +258,10 @@ public class Plugin implements IModPlugin {
 			return true;
 		}
 
-		public Drop(ItemStack out, float chance0, float chance1, float chance2, float chance3, Pair<Integer, Integer> pair0, Pair<Integer, Integer> pair1, Pair<Integer, Integer> pair2, Pair<Integer, Integer> pair3) {
+		public Drop(ItemStack out, float chance0, float chance1, float chance2,
+				float chance3, Pair<Integer, Integer> pair0,
+				Pair<Integer, Integer> pair1, Pair<Integer, Integer> pair2,
+				Pair<Integer, Integer> pair3) {
 			super();
 			this.out = out;
 			this.chance0 = chance0;
@@ -316,13 +326,16 @@ public class Plugin implements IModPlugin {
 		@Override
 		public boolean equals(Object obj) {
 			if (obj instanceof BlockWrapper)
-				return block == ((BlockWrapper) obj).block && meta == ((BlockWrapper) obj).meta;
+				return block == ((BlockWrapper) obj).block
+						&& meta == ((BlockWrapper) obj).meta;
 			return false;
 		}
 
 		IBlockState getState() {
 			int m = Item.getItemFromBlock(block).getMetadata(meta);
-			return block.onBlockPlaced(Minecraft.getMinecraft().theWorld, BlockPos.ORIGIN, EnumFacing.UP, 0, 0, 0, m, Minecraft.getMinecraft().thePlayer);
+			return block.onBlockPlaced(Minecraft.getMinecraft().theWorld,
+					BlockPos.ORIGIN, EnumFacing.UP, 0, 0, 0, m,
+					Minecraft.getMinecraft().thePlayer);
 		}
 
 		ItemStack getStack() {
