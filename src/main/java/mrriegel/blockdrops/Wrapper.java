@@ -6,9 +6,9 @@ import java.util.List;
 import mezz.jei.api.gui.ITooltipCallback;
 import mezz.jei.api.recipe.BlankRecipeWrapper;
 import mrriegel.blockdrops.Plugin.Drop;
+import net.minecraft.client.resources.I18n;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.text.TextFormatting;
-import net.minecraft.util.text.translation.I18n;
 
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -82,7 +82,7 @@ public class Wrapper extends BlankRecipeWrapper implements ITooltipCallback<Item
 			String chance = BlockDrops.showChance ? String.format("%.1f", chance(ingredient, (int) x)) + " %  " : "";
 			String minmax = BlockDrops.showMinMax ? "Min: " + pair(ingredient, (int) x).getLeft() + "  Max: " + pair(ingredient, (int) x).getRight() : "";
 			if (BlockDrops.showChance || BlockDrops.showMinMax)
-				tooltip.add(TextFormatting.BLUE + "Fortune " + (0l != x ? I18n.translateToLocal("enchantment.level." + x) : 0) + " " + TextFormatting.GRAY + chance + minmax);
+				tooltip.add(TextFormatting.BLUE + "Fortune " + (0l != x ? I18n.format("enchantment.level." + x) : 0) + " " + TextFormatting.GRAY + chance + minmax);
 		}
 	}
 }

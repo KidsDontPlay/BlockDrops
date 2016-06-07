@@ -1,5 +1,6 @@
 package mrriegel.blockdrops;
 
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
@@ -84,7 +85,7 @@ public class Plugin implements IModPlugin {
 		for (int i = 0; i < BlockDrops.iteration; i++) {
 			for (int j = 0; j < 4; j++) {
 				List<ItemStack> lis = wrap.block.getDrops(Minecraft.getMinecraft().theWorld, BlockPos.ORIGIN, wrap.getState(), j);
-
+				lis.removeAll(Collections.singleton(null));
 				if (BlockDrops.showMinMax)
 					if (i % 2 == 0)
 						switch (j) {
