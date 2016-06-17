@@ -67,7 +67,12 @@ public class Plugin implements IModPlugin {
 		});
 
 		for (BlockWrapper w : x) {
-			List<Drop> drops = getList(w);
+			List<Drop> drops;
+			try {
+				drops = getList(w);
+			} catch (Exception e) {
+				drops = Collections.EMPTY_LIST;
+			}
 			if (drops.isEmpty())
 				continue;
 			res.add(new Wrapper(w.getStack(), drops));
@@ -84,7 +89,8 @@ public class Plugin implements IModPlugin {
 		Map<StackWrapper, Pair<Integer, Integer>> pairs0 = Maps.newHashMap(), pairs1 = Maps.newHashMap(), pairs2 = Maps.newHashMap(), pairs3 = Maps.newHashMap();
 		for (int i = 0; i < BlockDrops.iteration; i++) {
 			for (int j = 0; j < 4; j++) {
-				List<ItemStack> lis = wrap.block.getDrops(Minecraft.getMinecraft().theWorld, BlockPos.ORIGIN, wrap.getState(), j);
+				List<ItemStack> list = wrap.block.getDrops(Minecraft.getMinecraft().theWorld, BlockPos.ORIGIN, wrap.getState(), j);
+				List<ItemStack> lis = Lists.newArrayList(list);
 				lis.removeAll(Collections.singleton(null));
 				if (BlockDrops.showMinMax)
 					if (i % 2 == 0)

@@ -25,4 +25,9 @@ public class Handler implements IRecipeHandler<Wrapper> {
 		return !recipe.getOutputs().isEmpty();
 	}
 
+	@Override
+	public String getRecipeCategoryUid(Wrapper recipe) {
+		return BlockDrops.MODID;
+	}
+
 }
