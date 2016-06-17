@@ -1,15 +1,20 @@
 package mrriegel.blockdrops;
 
+import java.util.List;
+
+import com.google.common.collect.Lists;
+
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventHandler;
 import net.minecraftforge.fml.common.Mod.Instance;
+import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 
 @Mod(modid = BlockDrops.MODID, name = BlockDrops.MODNAME, version = BlockDrops.VERSION, dependencies = "after:JEI@[3.0.0,);", clientSideOnly = true)
 public class BlockDrops {
 	public static final String MODID = "blockdrops";
-	public static final String VERSION = "1.0.2";
+	public static final String VERSION = "1.0.3";
 	public static final String MODNAME = "Block Drops";
 
 	@Instance(BlockDrops.MODID)
@@ -17,6 +22,8 @@ public class BlockDrops {
 
 	public static boolean all, showChance, showMinMax;
 	public static int iteration;
+	
+	public static List<Wrapper> wrappers;
 
 	@EventHandler
 	public void preInit(FMLPreInitializationEvent event) {
@@ -31,6 +38,11 @@ public class BlockDrops {
 		if (config.hasChanged()) {
 			config.save();
 		}
+	}
+	
+	@EventHandler
+	public void postInit(FMLPostInitializationEvent event){
+		wrappers=Lists.newArrayList(Plugin.getRecipes());
 	}
 
 }

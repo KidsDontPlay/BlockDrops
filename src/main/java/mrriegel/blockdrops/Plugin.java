@@ -35,7 +35,7 @@ public class Plugin implements IModPlugin {
 	public void register(IModRegistry registry) {
 		registry.addRecipeCategories(new Category(registry.getJeiHelpers().getGuiHelper()));
 		registry.addRecipeHandlers(new Handler());
-		registry.addRecipes(getRecipes());
+		registry.addRecipes(BlockDrops.wrappers);
 
 		for (ResourceLocation r : Item.REGISTRY.getKeys()) {
 			Item i = Item.REGISTRY.getObject(r);
@@ -44,7 +44,7 @@ public class Plugin implements IModPlugin {
 		}
 	}
 
-	private List<Wrapper> getRecipes() {
+	public static List<Wrapper> getRecipes() {
 		List<Wrapper> res = Lists.newArrayList();
 		Set<BlockWrapper> blocks = Sets.newHashSet();
 		for (ResourceLocation r : Block.REGISTRY.getKeys()) {
@@ -81,7 +81,7 @@ public class Plugin implements IModPlugin {
 
 	}
 
-	private List<Drop> getList(BlockWrapper wrap) {
+	private static List<Drop> getList(BlockWrapper wrap) {
 		List<Drop> drops = Lists.newArrayList();
 		if (wrap.getStack().getItem() == null)
 			return drops;
@@ -171,7 +171,7 @@ public class Plugin implements IModPlugin {
 
 	}
 
-	private float getChance(List<StackWrapper> stacks, ItemStack stack) {
+	private static float getChance(List<StackWrapper> stacks, ItemStack stack) {
 		if (!BlockDrops.showChance)
 			return 0f;
 		int con = contains(stacks, stack);
@@ -180,14 +180,14 @@ public class Plugin implements IModPlugin {
 		return 100F * ((float) stacks.get(con).size / (float) BlockDrops.iteration);
 	}
 
-	private int contains(List<StackWrapper> lis, ItemStack stack) {
+	private static int contains(List<StackWrapper> lis, ItemStack stack) {
 		for (int i = 0; i < lis.size(); i++)
 			if (lis.get(i).stack.isItemEqual(stack))
 				return i;
 		return -1;
 	}
 
-	private void add(List<StackWrapper> lis, ItemStack stack) {
+	private static void add(List<StackWrapper> lis, ItemStack stack) {
 		if (lis == null)
 			lis = Lists.newArrayList();
 		int con = contains(lis, stack);
@@ -200,7 +200,7 @@ public class Plugin implements IModPlugin {
 		}
 	}
 
-	private void add(Map<StackWrapper, Pair<Integer, Integer>> map, List<ItemStack> lis) {
+	private static void add(Map<StackWrapper, Pair<Integer, Integer>> map, List<ItemStack> lis) {
 		if (map == null)
 			map = Maps.newHashMap();
 		List<StackWrapper> list = Lists.newArrayList();
