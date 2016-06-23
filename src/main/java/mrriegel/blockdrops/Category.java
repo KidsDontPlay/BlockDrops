@@ -41,7 +41,10 @@ public class Category extends BlankRecipeCategory {
 		itemStacks.setFromRecipe(0, recipeWrapper.getInputs());
 		itemStacks.addTooltipCallback((ITooltipCallback<ItemStack>) recipeWrapper);
 		for (int i = 0; i < recipeWrapper.getOutputs().size(); i++) {
-			itemStacks.init(i + 1, false, 20 + i * 18, 51);
+			if (i < 8)
+				itemStacks.init(i + 1, false, 11 + i * 18, 51);
+			else
+				itemStacks.init(i + 1, false, 11 + (i - 8) * 18, 69);
 			itemStacks.set(i + 1, (ItemStack) recipeWrapper.getOutputs().get(i));
 		}
 
