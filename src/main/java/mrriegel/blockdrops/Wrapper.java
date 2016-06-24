@@ -10,6 +10,7 @@ import net.minecraft.client.resources.I18n;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.text.TextFormatting;
 
+import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
 import com.google.common.collect.Lists;
@@ -56,6 +57,11 @@ public class Wrapper extends BlankRecipeWrapper implements ITooltipCallback<Item
 		return 0f;
 	}
 
+	@Override
+	public String toString() {
+		return "Wrapper [in=" + in + ", out=" + out + "]";
+	}
+
 	private Pair<Integer, Integer> pair(ItemStack s, int fortune) {
 		for (Drop d : out)
 			if (d.out.isItemEqual(s)) {
@@ -72,7 +78,7 @@ public class Wrapper extends BlankRecipeWrapper implements ITooltipCallback<Item
 					break;
 				}
 			}
-		return Pair.of(0, 0);
+		return MutablePair.of(0, 0);
 	}
 
 	@Override
@@ -84,5 +90,21 @@ public class Wrapper extends BlankRecipeWrapper implements ITooltipCallback<Item
 			if (BlockDrops.showChance || BlockDrops.showMinMax)
 				tooltip.add(TextFormatting.BLUE + "Fortune " + (0l != x ? I18n.format("enchantment.level." + x) : 0) + " " + TextFormatting.GRAY + chance + minmax);
 		}
+	}
+
+	public ItemStack getIn() {
+		return in;
+	}
+
+	public void setIn(ItemStack in) {
+		this.in = in;
+	}
+
+	public List<Drop> getOut() {
+		return out;
+	}
+
+	public void setOut(List<Drop> out) {
+		this.out = out;
 	}
 }

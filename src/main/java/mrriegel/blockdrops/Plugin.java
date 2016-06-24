@@ -71,6 +71,7 @@ public class Plugin implements IModPlugin {
 			try {
 				drops = getList(w);
 			} catch (Exception e) {
+				// e.printStackTrace();
 				drops = Collections.EMPTY_LIST;
 			}
 			if (drops.isEmpty())
@@ -221,9 +222,9 @@ public class Plugin implements IModPlugin {
 	}
 
 	static class Drop {
-		ItemStack out;
-		float chance0, chance1, chance2, chance3;
-		Pair<Integer, Integer> pair0, pair1, pair2, pair3;
+		public ItemStack out;
+		public float chance0, chance1, chance2, chance3;
+		public Pair<Integer, Integer> pair0, pair1, pair2, pair3;
 
 		@Override
 		public boolean equals(Object obj) {
@@ -248,6 +249,11 @@ public class Plugin implements IModPlugin {
 			} else if (!out.isItemEqual(other.out))
 				return false;
 			return true;
+		}
+
+		@Override
+		public String toString() {
+			return "Drop [out=" + out + ", chance0=" + chance0 + ", chance1=" + chance1 + ", chance2=" + chance2 + ", chance3=" + chance3 + ", pair0=" + pair0 + ", pair1=" + pair1 + ", pair2=" + pair2 + ", pair3=" + pair3 + "]";
 		}
 
 		public Drop(ItemStack out, float chance0, float chance1, float chance2, float chance3, Pair<Integer, Integer> pair0, Pair<Integer, Integer> pair1, Pair<Integer, Integer> pair2, Pair<Integer, Integer> pair3) {
