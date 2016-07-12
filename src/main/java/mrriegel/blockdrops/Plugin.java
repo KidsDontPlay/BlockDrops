@@ -14,6 +14,8 @@ import mezz.jei.api.JEIPlugin;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.WorldClient;
+import net.minecraft.entity.monster.EntityZombie;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemPickaxe;
@@ -21,8 +23,8 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
-
 import net.minecraftforge.fml.common.ProgressManager;
+
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -74,7 +76,7 @@ public class Plugin implements IModPlugin {
 			try {
 				drops = getList(w);
 			} catch (Exception e) {
-				// e.printStackTrace();
+				System.out.println("An error occured while calculating drops for " + w.block.getLocalizedName());
 				drops = Collections.EMPTY_LIST;
 			}
 			if (drops.isEmpty())
@@ -92,9 +94,10 @@ public class Plugin implements IModPlugin {
 			return drops;
 		List<StackWrapper> stacks0 = Lists.newArrayList(), stacks1 = Lists.newArrayList(), stacks2 = Lists.newArrayList(), stacks3 = Lists.newArrayList();
 		Map<StackWrapper, Pair<Integer, Integer>> pairs0 = Maps.newHashMap(), pairs1 = Maps.newHashMap(), pairs2 = Maps.newHashMap(), pairs3 = Maps.newHashMap();
+		IBlockState state = wrap.getState();
 		for (int i = 0; i < BlockDrops.iteration; i++) {
 			for (int j = 0; j < 4; j++) {
-				List<ItemStack> list = wrap.block.getDrops(Minecraft.getMinecraft().theWorld, BlockPos.ORIGIN, wrap.getState(), j);
+				List<ItemStack> list = wrap.block.getDrops(Minecraft.getMinecraft().theWorld, BlockPos.ORIGIN, state, j);
 				List<ItemStack> lis = Lists.newArrayList(list);
 				lis.removeAll(Collections.singleton(null));
 				if (BlockDrops.showMinMax)
@@ -331,7 +334,11 @@ public class Plugin implements IModPlugin {
 
 		IBlockState getState() {
 			int m = Item.getItemFromBlock(block).getMetadata(meta);
-			return block.onBlockPlaced(Minecraft.getMinecraft().theWorld, BlockPos.ORIGIN, EnumFacing.UP, 0, 0, 0, m, Minecraft.getMinecraft().thePlayer);
+			try {
+				return block.onBlockPlaced(new WorldClient(null, null, 0, null, null), BlockPos.ORIGIN, EnumFacing.UP, 0, 0, 0, m, new EntityZombie(null));
+			} catch (Exception e) {
+				return block.getStateFromMeta(m);
+			}
 		}
 
 		ItemStack getStack() {
