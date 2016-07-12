@@ -22,6 +22,7 @@ import net.minecraft.util.EnumFacing;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
 
+import net.minecraftforge.fml.common.ProgressManager;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -66,8 +67,10 @@ public class Plugin implements IModPlugin {
 			}
 		});
 
+		ProgressManager.ProgressBar bar = ProgressManager.push("Analysing Drops", x.size());
 		for (BlockWrapper w : x) {
 			List<Drop> drops;
+			bar.step(w.block.getRegistryName().toString());
 			try {
 				drops = getList(w);
 			} catch (Exception e) {
@@ -78,6 +81,7 @@ public class Plugin implements IModPlugin {
 				continue;
 			res.add(new Wrapper(w.getStack(), drops));
 		}
+		ProgressManager.pop(bar);
 		return res;
 
 	}
