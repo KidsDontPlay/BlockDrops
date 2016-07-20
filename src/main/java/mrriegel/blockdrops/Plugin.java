@@ -75,7 +75,7 @@ public class Plugin implements IModPlugin {
 			bar.step(w.block.getRegistryName().toString());
 			try {
 				drops = getList(w);
-			} catch (Exception e) {
+			} catch (Throwable e) {
 				System.out.println("An error occured while calculating drops for " + w.block.getLocalizedName());
 				drops = Collections.EMPTY_LIST;
 			}
