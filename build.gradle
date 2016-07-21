@@ -38,7 +38,7 @@ minecraft {
 }
 
 dependencies {
-    deobfCompile "mezz.jei:jei_1.10.2:3.7.5.227"
+    deobfCompile "mezz.jei:jei_1.10.2:3.7.8.234"
 
 }
 
