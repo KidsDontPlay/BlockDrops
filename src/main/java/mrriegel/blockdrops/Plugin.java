@@ -21,7 +21,6 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemPickaxe;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumFacing;
-import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraftforge.fml.common.ProgressManager;
 
@@ -40,8 +39,7 @@ public class Plugin implements IModPlugin {
 		registry.addRecipeHandlers(new Handler());
 		registry.addRecipes(BlockDrops.wrappers);
 
-		for (ResourceLocation r : Item.REGISTRY.getKeys()) {
-			Item i = Item.REGISTRY.getObject(r);
+		for (Item i : Item.REGISTRY) {
 			if (i instanceof ItemPickaxe)
 				registry.addRecipeCategoryCraftingItem(new ItemStack(i), BlockDrops.MODID);
 		}
@@ -50,8 +48,7 @@ public class Plugin implements IModPlugin {
 	public static List<Wrapper> getRecipes() {
 		List<Wrapper> res = Lists.newArrayList();
 		Set<BlockWrapper> blocks = Sets.newHashSet();
-		for (ResourceLocation r : Block.REGISTRY.getKeys()) {
-			Block b = Block.REGISTRY.getObject(r);
+		for (Block b : Block.REGISTRY) {
 			if (Item.getItemFromBlock(b) == null || b == Blocks.BEDROCK)
 				continue;
 			List<ItemStack> lis = Lists.newArrayList();
@@ -97,7 +94,7 @@ public class Plugin implements IModPlugin {
 		IBlockState state = wrap.getState();
 		for (int i = 0; i < BlockDrops.iteration; i++) {
 			for (int j = 0; j < 4; j++) {
-				List<ItemStack> list = wrap.block.getDrops(Minecraft.getMinecraft().theWorld, BlockPos.ORIGIN, state, j);
+				List<ItemStack> list = wrap.block.getDrops(new WorldClient(null, null, 0, null, null), BlockPos.ORIGIN, state, j);
 				List<ItemStack> lis = Lists.newArrayList(list);
 				lis.removeAll(Collections.singleton(null));
 				if (BlockDrops.showMinMax)
