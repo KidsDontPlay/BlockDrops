@@ -13,7 +13,6 @@ import mezz.jei.api.IModRegistry;
 import mezz.jei.api.JEIPlugin;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.entity.monster.EntityZombie;
 import net.minecraft.init.Blocks;
@@ -26,6 +25,7 @@ import net.minecraftforge.fml.common.ProgressManager;
 
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.logging.log4j.LogManager;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -73,7 +73,7 @@ public class Plugin implements IModPlugin {
 			try {
 				drops = getList(w);
 			} catch (Throwable e) {
-				System.out.println("An error occured while calculating drops for " + w.block.getLocalizedName());
+				LogManager.getLogger().error("An error occured while calculating drops for " + w.block.getLocalizedName() + " (" + e.getClass() + ")");
 				drops = Collections.EMPTY_LIST;
 			}
 			if (drops.isEmpty())
@@ -94,26 +94,24 @@ public class Plugin implements IModPlugin {
 		IBlockState state = wrap.getState();
 		for (int i = 0; i < BlockDrops.iteration; i++) {
 			for (int j = 0; j < 4; j++) {
-				List<ItemStack> list = wrap.block.getDrops(new WorldClient(null, null, 0, null, null), BlockPos.ORIGIN, state, j);
+				List<ItemStack> list = wrap.block.getDrops(null, BlockPos.ORIGIN, state, j);
 				List<ItemStack> lis = Lists.newArrayList(list);
 				lis.removeAll(Collections.singleton(null));
-				if (BlockDrops.showMinMax)
-					if (i % 2 == 0)
-						switch (j) {
-						case 0:
-							add(pairs0, lis);
-							break;
-						case 1:
-							add(pairs1, lis);
-							break;
-						case 2:
-							add(pairs2, lis);
-							break;
-						case 3:
-							add(pairs3, lis);
-							break;
-						}
-
+				if (i % 2 == 0)
+					switch (j) {
+					case 0:
+						add(pairs0, lis);
+						break;
+					case 1:
+						add(pairs1, lis);
+						break;
+					case 2:
+						add(pairs2, lis);
+						break;
+					case 3:
+						add(pairs3, lis);
+						break;
+					}
 				for (ItemStack s : lis) {
 					if (s == null)
 						continue;

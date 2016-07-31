@@ -26,7 +26,7 @@ import com.google.gson.GsonBuilder;
 @Mod(modid = BlockDrops.MODID, name = BlockDrops.MODNAME, version = BlockDrops.VERSION, dependencies = "after:JEI@[3.0.0,);", clientSideOnly = true)
 public class BlockDrops {
 	public static final String MODID = "blockdrops";
-	public static final String VERSION = "1.0.6";
+	public static final String VERSION = "1.0.7";
 	public static final String MODNAME = "Block Drops";
 
 	@Instance(BlockDrops.MODID)
@@ -52,7 +52,7 @@ public class BlockDrops {
 		all = config.getBoolean("allDrops", Configuration.CATEGORY_CLIENT, false, "Show block drops of any block.");
 		showChance = config.getBoolean("showChance", Configuration.CATEGORY_CLIENT, true, "Show chance of drops.");
 		showMinMax = config.getBoolean("showMinMax", Configuration.CATEGORY_CLIENT, true, "Show minimum and maximum of drops.");
-		iteration = config.getInt("iteration", Configuration.CATEGORY_CLIENT, 6000, 1, 99999, "Number of calculation. The higher the more precise the chance.");
+		iteration = config.getInt("iteration", Configuration.CATEGORY_CLIENT, 5000, 1, 99999, "Number of calculation. The higher the more precise the chance.");
 
 		if (config.hasChanged()) {
 			config.save();
