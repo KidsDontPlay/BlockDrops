@@ -85,7 +85,7 @@ public class Wrapper extends BlankRecipeWrapper implements ITooltipCallback<Item
 	public void onTooltip(int slotIndex, boolean input, ItemStack ingredient, List<String> tooltip) {
 		if (!input) {
 			long x = (System.currentTimeMillis() / 1500l) % 4;
-			String chance = BlockDrops.showChance ? String.format("%.1f", chance(ingredient, (int) x)) + " %  " : "";
+			String chance = BlockDrops.showChance ? String.format("%.2f", chance(ingredient, (int) x)) + " %  " : "";
 			String minmax = BlockDrops.showMinMax ? "Min: " + pair(ingredient, (int) x).getLeft() + "  Max: " + pair(ingredient, (int) x).getRight() : "";
 			if (BlockDrops.showChance || BlockDrops.showMinMax)
 				tooltip.add(TextFormatting.BLUE + "Fortune " + (0l != x ? I18n.format("enchantment.level." + x) : 0) + " " + TextFormatting.GRAY + chance + minmax);

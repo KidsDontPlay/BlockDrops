@@ -45,6 +45,10 @@ public class Plugin implements IModPlugin {
 		}
 	}
 
+	@Override
+	public void onRuntimeAvailable(IJeiRuntime jeiRuntime) {
+	}
+
 	public static List<Wrapper> getRecipes() {
 		List<Wrapper> res = Lists.newArrayList();
 		Set<BlockWrapper> blocks = Sets.newHashSet();
@@ -96,22 +100,26 @@ public class Plugin implements IModPlugin {
 			for (int j = 0; j < 4; j++) {
 				List<ItemStack> list = wrap.block.getDrops(null, BlockPos.ORIGIN, state, j);
 				List<ItemStack> lis = Lists.newArrayList(list);
+				try {
+					net.minecraftforge.event.ForgeEventFactory.fireBlockHarvesting(lis, null, BlockPos.ORIGIN, state, j, 1f, false, null);
+				} catch (Throwable t) {
+				}
 				lis.removeAll(Collections.singleton(null));
-				if (i % 2 == 0)
-					switch (j) {
-					case 0:
-						add(pairs0, lis);
-						break;
-					case 1:
-						add(pairs1, lis);
-						break;
-					case 2:
-						add(pairs2, lis);
-						break;
-					case 3:
-						add(pairs3, lis);
-						break;
-					}
+				// if (i % 2 == 0)
+				switch (j) {
+				case 0:
+					add(pairs0, lis);
+					break;
+				case 1:
+					add(pairs1, lis);
+					break;
+				case 2:
+					add(pairs2, lis);
+					break;
+				case 3:
+					add(pairs3, lis);
+					break;
+				}
 				for (ItemStack s : lis) {
 					if (s == null)
 						continue;
@@ -219,10 +227,6 @@ public class Plugin implements IModPlugin {
 		}
 	}
 
-	@Override
-	public void onRuntimeAvailable(IJeiRuntime jeiRuntime) {
-	}
-
 	static class Drop {
 		public ItemStack out;
 		public float chance0, chance1, chance2, chance3;
@@ -266,9 +270,17 @@ public class Plugin implements IModPlugin {
 			this.chance2 = chance2;
 			this.chance3 = chance3;
 			this.pair0 = pair0;
+			if (this.pair0 == null)
+				this.pair0 = new MutablePair<Integer, Integer>(0, 0);
 			this.pair1 = pair1;
+			if (this.pair1 == null)
+				this.pair1 = new MutablePair<Integer, Integer>(0, 0);
 			this.pair2 = pair2;
+			if (this.pair2 == null)
+				this.pair2 = new MutablePair<Integer, Integer>(0, 0);
 			this.pair3 = pair3;
+			if (this.pair3 == null)
+				this.pair3 = new MutablePair<Integer, Integer>(0, 0);
 		}
 
 	}
