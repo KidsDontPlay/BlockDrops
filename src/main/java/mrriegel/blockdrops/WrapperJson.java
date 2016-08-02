@@ -28,13 +28,11 @@ public class WrapperJson implements JsonDeserializer<Wrapper>, JsonSerializer<Wr
 		JsonObject json = new JsonObject();
 		ItemStack stack = src.getIn();
 		json.addProperty("name", stack.getItem().getRegistryName().toString());
-		json.addProperty("amount", stack.stackSize);
 		json.addProperty("meta", stack.getItemDamage());
 		json.addProperty("length", src.getOut().size());
 		for (int i = 0; i < src.getOut().size(); i++) {
 			Drop d = src.getOut().get(i);
 			json.addProperty("name" + i, d.out.getItem().getRegistryName().toString());
-			json.addProperty("amount" + i, d.out.stackSize);
 			json.addProperty("meta" + i, d.out.getItemDamage());
 			json.addProperty("0chance" + i, d.chance0);
 			json.addProperty("1chance" + i, d.chance1);
@@ -53,9 +51,8 @@ public class WrapperJson implements JsonDeserializer<Wrapper>, JsonSerializer<Wr
 	public Wrapper deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
 		Wrapper wrap = new Wrapper(null, Collections.EMPTY_LIST);
 		String name = json.getAsJsonObject().get("name").getAsString();
-		int stackSize = json.getAsJsonObject().get("amount").getAsInt();
 		int meta = json.getAsJsonObject().get("meta").getAsInt();
-		ItemStack stack = new ItemStack(Item.REGISTRY.getObject(new ResourceLocation(name)), stackSize, meta);
+		ItemStack stack = new ItemStack(Item.REGISTRY.getObject(new ResourceLocation(name)), 1, meta);
 		wrap.setIn(stack);
 
 		int length = json.getAsJsonObject().get("length").getAsInt();
@@ -63,9 +60,8 @@ public class WrapperJson implements JsonDeserializer<Wrapper>, JsonSerializer<Wr
 		for (int i = 0; i < length; i++) {
 			Drop d = new Drop(null, 0, 0, 0, 0, null, null, null, null);
 			String n = json.getAsJsonObject().get("name" + i).getAsString();
-			int s = json.getAsJsonObject().get("amount" + i).getAsInt();
 			int m = json.getAsJsonObject().get("meta" + i).getAsInt();
-			ItemStack st = new ItemStack(Item.REGISTRY.getObject(new ResourceLocation(n)), s, m);
+			ItemStack st = new ItemStack(Item.REGISTRY.getObject(new ResourceLocation(n)), 1, m);
 			d.out = st;
 			d.chance0 = json.getAsJsonObject().get("0chance" + i).getAsFloat();
 			d.chance1 = json.getAsJsonObject().get("1chance" + i).getAsFloat();

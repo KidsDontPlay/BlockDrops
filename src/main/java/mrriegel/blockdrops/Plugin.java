@@ -22,10 +22,9 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
 import net.minecraftforge.fml.common.ProgressManager;
+import net.minecraftforge.items.ItemHandlerHelper;
 
 import org.apache.commons.lang3.tuple.MutablePair;
-import org.apache.commons.lang3.tuple.Pair;
-import org.apache.logging.log4j.LogManager;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -77,7 +76,7 @@ public class Plugin implements IModPlugin {
 			try {
 				drops = getList(w);
 			} catch (Throwable e) {
-				LogManager.getLogger().error("An error occured while calculating drops for " + w.block.getLocalizedName() + " (" + e.getClass() + ")");
+				BlockDrops.logger.error("An error occured while calculating drops for " + w.block.getLocalizedName() + " (" + e.getClass() + ")");
 				drops = Collections.EMPTY_LIST;
 			}
 			if (drops.isEmpty())
@@ -94,14 +93,15 @@ public class Plugin implements IModPlugin {
 		if (wrap.getStack().getItem() == null)
 			return drops;
 		List<StackWrapper> stacks0 = Lists.newArrayList(), stacks1 = Lists.newArrayList(), stacks2 = Lists.newArrayList(), stacks3 = Lists.newArrayList();
-		Map<StackWrapper, Pair<Integer, Integer>> pairs0 = Maps.newHashMap(), pairs1 = Maps.newHashMap(), pairs2 = Maps.newHashMap(), pairs3 = Maps.newHashMap();
+		Map<StackWrapper, MutablePair<Integer, Integer>> pairs0 = Maps.newHashMap(), pairs1 = Maps.newHashMap(), pairs2 = Maps.newHashMap(), pairs3 = Maps.newHashMap();
 		IBlockState state = wrap.getState();
 		for (int i = 0; i < BlockDrops.iteration; i++) {
 			for (int j = 0; j < 4; j++) {
-				List<ItemStack> list = wrap.block.getDrops(null, BlockPos.ORIGIN, state, j);
+				List<ItemStack> list = wrap.block.getDrops(BlockDrops.player.worldObj, BlockPos.ORIGIN, state, j);
 				List<ItemStack> lis = Lists.newArrayList(list);
 				try {
-					net.minecraftforge.event.ForgeEventFactory.fireBlockHarvesting(lis, null, BlockPos.ORIGIN, state, j, 1f, false, null);
+					// if (BlockDrops.vanillaBlocks)
+					net.minecraftforge.event.ForgeEventFactory.fireBlockHarvesting(lis, BlockDrops.player.worldObj, BlockPos.ORIGIN, state, j, 1f, false, BlockDrops.player);
 				} catch (Throwable t) {
 				}
 				lis.removeAll(Collections.singleton(null));
@@ -211,7 +211,7 @@ public class Plugin implements IModPlugin {
 		}
 	}
 
-	private static void add(Map<StackWrapper, Pair<Integer, Integer>> map, List<ItemStack> lis) {
+	private static void add(Map<StackWrapper, MutablePair<Integer, Integer>> map, List<ItemStack> lis) {
 		if (map == null)
 			map = Maps.newHashMap();
 		List<StackWrapper> list = Lists.newArrayList();
@@ -222,7 +222,7 @@ public class Plugin implements IModPlugin {
 				map.put(w, new MutablePair<Integer, Integer>(10000, 0));
 			int min = map.get(w).getLeft();
 			int max = map.get(w).getRight();
-			Pair<Integer, Integer> pair = new MutablePair<Integer, Integer>(Math.min(min, w.size), Math.max(max, w.size));
+			MutablePair<Integer, Integer> pair = new MutablePair<Integer, Integer>(Math.min(min, w.size), Math.max(max, w.size));
 			map.put(w, pair);
 		}
 	}
@@ -230,7 +230,7 @@ public class Plugin implements IModPlugin {
 	static class Drop {
 		public ItemStack out;
 		public float chance0, chance1, chance2, chance3;
-		public Pair<Integer, Integer> pair0, pair1, pair2, pair3;
+		public MutablePair<Integer, Integer> pair0, pair1, pair2, pair3;
 
 		@Override
 		public boolean equals(Object obj) {
@@ -262,9 +262,9 @@ public class Plugin implements IModPlugin {
 			return "Drop [out=" + out + ", chance0=" + chance0 + ", chance1=" + chance1 + ", chance2=" + chance2 + ", chance3=" + chance3 + ", pair0=" + pair0 + ", pair1=" + pair1 + ", pair2=" + pair2 + ", pair3=" + pair3 + "]";
 		}
 
-		public Drop(ItemStack out, float chance0, float chance1, float chance2, float chance3, Pair<Integer, Integer> pair0, Pair<Integer, Integer> pair1, Pair<Integer, Integer> pair2, Pair<Integer, Integer> pair3) {
+		public Drop(ItemStack out, float chance0, float chance1, float chance2, float chance3, MutablePair<Integer, Integer> pair0, MutablePair<Integer, Integer> pair1, MutablePair<Integer, Integer> pair2, MutablePair<Integer, Integer> pair3) {
 			super();
-			this.out = out;
+			this.out = ItemHandlerHelper.copyStackWithSize(out, 1);
 			this.chance0 = chance0;
 			this.chance1 = chance1;
 			this.chance2 = chance2;
@@ -281,6 +281,14 @@ public class Plugin implements IModPlugin {
 			this.pair3 = pair3;
 			if (this.pair3 == null)
 				this.pair3 = new MutablePair<Integer, Integer>(0, 0);
+			if (this.chance0 < 100)
+				this.pair0.setLeft(0);
+			if (this.chance1 < 100)
+				this.pair1.setLeft(0);
+			if (this.chance2 < 100)
+				this.pair2.setLeft(0);
+			if (this.chance3 < 100)
+				this.pair3.setLeft(0);
 		}
 
 	}
@@ -292,7 +300,7 @@ public class Plugin implements IModPlugin {
 		@Override
 		public boolean equals(Object obj) {
 			if (obj instanceof StackWrapper)
-				return stack.isItemEqual(((StackWrapper) obj).stack);
+				return ItemHandlerHelper.canItemStacksStack(stack, ((StackWrapper) obj).stack);
 			return false;
 		}
 
@@ -308,6 +316,7 @@ public class Plugin implements IModPlugin {
 			int result = 1;
 			result = prime * result + Item.getIdFromItem(stack.getItem());
 			result = prime * result + stack.getItemDamage();
+			result = prime * result + (stack.getTagCompound() == null ? 0 : stack.getTagCompound().hashCode());
 			return result;
 		}
 
