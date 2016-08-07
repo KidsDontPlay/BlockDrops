@@ -102,17 +102,15 @@ public class Plugin implements IModPlugin {
 		boolean crashed = false;
 		for (int i = 0; i < BlockDrops.iteration; i++) {
 			for (int j = 0; j < 4; j++) {
-				List<ItemStack> list = wrap.block.getDrops(BlockDrops.player != null ? BlockDrops.player.worldObj : null, BlockPos.ORIGIN, state, j);
+				List<ItemStack> list = wrap.block.getDrops(BlockDrops.world, BlockPos.ORIGIN, state, j);
 				List<ItemStack> lis = Lists.newArrayList(list);
 				try {
-					// if (BlockDrops.vanillaBlocks)
 					if (!crashed)
-						net.minecraftforge.event.ForgeEventFactory.fireBlockHarvesting(lis, BlockDrops.player != null ? BlockDrops.player.worldObj : null, BlockPos.ORIGIN, state, j, 1f, false, BlockDrops.player);
+						net.minecraftforge.event.ForgeEventFactory.fireBlockHarvesting(lis, BlockDrops.world, BlockPos.ORIGIN, state, j, 1f, false, null);
 				} catch (Throwable t) {
 					crashed = true;
 				}
 				lis.removeAll(Collections.singleton(null));
-				// if (i % 2 == 0)
 				switch (j) {
 				case 0:
 					add(pairs0, lis);

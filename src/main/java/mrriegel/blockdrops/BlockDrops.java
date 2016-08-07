@@ -11,23 +11,17 @@ import java.util.List;
 import java.util.UUID;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.gui.GuiScreenDemo;
-import net.minecraft.client.main.GameConfiguration;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.network.NetHandlerPlayClient;
-import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.EnumPacketDirection;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.profiler.Profiler;
-import net.minecraft.stats.StatisticsManager;
 import net.minecraft.world.EnumDifficulty;
 import net.minecraft.world.WorldSettings;
 import net.minecraft.world.storage.WorldInfo;
 import net.minecraftforge.common.config.Configuration;
-import net.minecraftforge.common.util.FakePlayer;
-import net.minecraftforge.common.util.FakePlayerFactory;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventHandler;
@@ -39,9 +33,7 @@ import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
-import com.google.common.primitives.Ints;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -63,7 +55,7 @@ public class BlockDrops {
 	public static List<Wrapper> wrappers;
 	public static Gson gson;
 	public static Logger logger;
-	public static EntityPlayer player;
+	public static WorldClient world;
 
 	File configDir;
 	File wraps;
@@ -94,9 +86,8 @@ public class BlockDrops {
 
 	@EventHandler
 	public void postInit(FMLPostInitializationEvent event) throws IOException {
-//		NetHandlerPlayClient netHandler = new NetHandlerPlayClient(Minecraft.getMinecraft(), new GuiScreenDemo(), new NetworkManager(EnumPacketDirection.CLIENTBOUND), new GameProfile(UUID.randomUUID(), this.toString().toLowerCase().concat(MODID)));
-//		WorldClient w = new WorldClient(netHandler, new WorldSettings(new WorldInfo(new NBTTagCompound())), 0, EnumDifficulty.HARD, new Profiler());
-//		player = new EntityPlayerSP(Minecraft.getMinecraft(), w, netHandler, new StatisticsManager());
+		NetHandlerPlayClient netHandler = new NetHandlerPlayClient(Minecraft.getMinecraft(), new GuiScreenDemo(), new NetworkManager(EnumPacketDirection.CLIENTBOUND), new GameProfile(UUID.randomUUID(), this.toString().toLowerCase().concat(MODID)));
+		world = new WorldClient(netHandler, new WorldSettings(new WorldInfo(new NBTTagCompound())), 0, EnumDifficulty.HARD, new Profiler());
 		StringBuilder s = new StringBuilder();
 		List<ModContainer> mods = Lists.newArrayList(Loader.instance().getActiveModList());
 		Collections.sort(mods, new Comparator<ModContainer>() {
