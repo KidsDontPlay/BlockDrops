@@ -20,6 +20,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemPickaxe;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumFacing;
+import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraftforge.fml.common.ProgressManager;
 import net.minecraftforge.items.ItemHandlerHelper;
@@ -51,7 +52,10 @@ public class Plugin implements IModPlugin {
 	public static List<Wrapper> getRecipes() {
 		List<Wrapper> res = Lists.newArrayList();
 		Set<BlockWrapper> blocks = Sets.newHashSet();
-		for (Block b : Block.REGISTRY) {
+		for (ResourceLocation r : Block.REGISTRY.getKeys()) {
+			if (BlockDrops.blacklist.contains(r.getResourceDomain()))
+				continue;
+			Block b = Block.REGISTRY.getObject(r);
 			if (Item.getItemFromBlock(b) == null || b == Blocks.BEDROCK)
 				continue;
 			List<ItemStack> lis = Lists.newArrayList();
@@ -95,14 +99,17 @@ public class Plugin implements IModPlugin {
 		List<StackWrapper> stacks0 = Lists.newArrayList(), stacks1 = Lists.newArrayList(), stacks2 = Lists.newArrayList(), stacks3 = Lists.newArrayList();
 		Map<StackWrapper, MutablePair<Integer, Integer>> pairs0 = Maps.newHashMap(), pairs1 = Maps.newHashMap(), pairs2 = Maps.newHashMap(), pairs3 = Maps.newHashMap();
 		IBlockState state = wrap.getState();
+		boolean crashed = false;
 		for (int i = 0; i < BlockDrops.iteration; i++) {
 			for (int j = 0; j < 4; j++) {
-				List<ItemStack> list = wrap.block.getDrops(BlockDrops.player.worldObj, BlockPos.ORIGIN, state, j);
+				List<ItemStack> list = wrap.block.getDrops(BlockDrops.player != null ? BlockDrops.player.worldObj : null, BlockPos.ORIGIN, state, j);
 				List<ItemStack> lis = Lists.newArrayList(list);
 				try {
 					// if (BlockDrops.vanillaBlocks)
-					net.minecraftforge.event.ForgeEventFactory.fireBlockHarvesting(lis, BlockDrops.player.worldObj, BlockPos.ORIGIN, state, j, 1f, false, BlockDrops.player);
+					if (!crashed)
+						net.minecraftforge.event.ForgeEventFactory.fireBlockHarvesting(lis, BlockDrops.player != null ? BlockDrops.player.worldObj : null, BlockPos.ORIGIN, state, j, 1f, false, BlockDrops.player);
 				} catch (Throwable t) {
+					crashed = true;
 				}
 				lis.removeAll(Collections.singleton(null));
 				// if (i % 2 == 0)
