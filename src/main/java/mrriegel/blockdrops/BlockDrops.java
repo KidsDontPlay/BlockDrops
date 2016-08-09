@@ -42,13 +42,13 @@ import com.mojang.authlib.GameProfile;
 @Mod(modid = BlockDrops.MODID, name = BlockDrops.MODNAME, version = BlockDrops.VERSION, dependencies = "after:JEI@[3.0.0,);", clientSideOnly = true)
 public class BlockDrops {
 	public static final String MODID = "blockdrops";
-	public static final String VERSION = "1.0.9";
+	public static final String VERSION = "1.0.10";
 	public static final String MODNAME = "Block Drops";
 
 	@Instance(BlockDrops.MODID)
 	public static BlockDrops instance;
 
-	public static boolean all, showChance, showMinMax/* /*vanillaBlocks */;
+	public static boolean all, showChance, showMinMax;
 	public static int iteration;
 	public static List<String> blacklist;
 
@@ -73,9 +73,6 @@ public class BlockDrops {
 		showMinMax = config.getBoolean("showMinMax", Configuration.CATEGORY_CLIENT, true, "Show minimum and maximum of drops.");
 		iteration = config.getInt("iteration", Configuration.CATEGORY_CLIENT, 5000, 1, 99999, "Number of calculation. The higher the more precise the chance.");
 		blacklist = Lists.newArrayList(config.getStringList("blacklist", Configuration.CATEGORY_CLIENT, new String[] { "flatcoloredblocks", "chisel" }, "Mod IDs of mods that won't scanned."));
-		// vanillaBlocks = config.getBoolean("vanillaBlocks",
-		// Configuration.CATEGORY_CLIENT, false,
-		// "Show block drops of vanilla blocks added by other mods. Could cause MASSIVE delay.");
 
 		if (config.hasChanged()) {
 			config.save();
