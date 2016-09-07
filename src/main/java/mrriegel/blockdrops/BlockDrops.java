@@ -72,7 +72,7 @@ public class BlockDrops {
 		showChance = config.getBoolean("showChance", Configuration.CATEGORY_CLIENT, true, "Show chance of drops.");
 		showMinMax = config.getBoolean("showMinMax", Configuration.CATEGORY_CLIENT, true, "Show minimum and maximum of drops.");
 		iteration = config.getInt("iteration", Configuration.CATEGORY_CLIENT, 5000, 1, 99999, "Number of calculation. The higher the more precise the chance.");
-		blacklist = Lists.newArrayList(config.getStringList("blacklist", Configuration.CATEGORY_CLIENT, new String[] { "flatcoloredblocks", "chisel" }, "Mod IDs of mods that won't scanned."));
+		blacklist = Lists.newArrayList(config.getStringList("blacklist", Configuration.CATEGORY_CLIENT, new String[] { "flatcoloredblocks", "chisel", "roots" }, "Mod IDs of mods that won't scanned."));
 
 		if (config.hasChanged()) {
 			config.save();
