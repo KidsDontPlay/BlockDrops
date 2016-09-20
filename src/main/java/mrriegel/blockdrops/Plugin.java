@@ -106,7 +106,7 @@ public class Plugin implements IModPlugin {
 				List<ItemStack> lis = Lists.newArrayList(list);
 				try {
 					if (!crashed)
-						net.minecraftforge.event.ForgeEventFactory.fireBlockHarvesting(lis, BlockDrops.world, BlockPos.ORIGIN, state, j, 1f, false, null);
+						net.minecraftforge.event.ForgeEventFactory.fireBlockHarvesting(lis, BlockDrops.world, BlockPos.ORIGIN, state, j, 1f, false, BlockDrops.player);
 				} catch (Throwable t) {
 					crashed = true;
 				}
