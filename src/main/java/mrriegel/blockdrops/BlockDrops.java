@@ -2,12 +2,15 @@ package mrriegel.blockdrops;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Collections;
-import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import net.minecraft.client.Minecraft;
@@ -29,6 +32,7 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventHandler;
 import net.minecraftforge.fml.common.Mod.Instance;
 import net.minecraftforge.fml.common.ModContainer;
+import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 
@@ -54,21 +58,20 @@ public class BlockDrops {
 	public static int iteration;
 	public static List<String> blacklist;
 
-	public static List<Wrapper> wrappers;
+	public static List<Wrapper> recipeWrappers;
 	public static Gson gson;
 	public static Logger logger;
 	public static WorldClient world;
 	public static EntityPlayerSP player;
 
-	File configDir;
-	File wraps;
-	File hash;
+	private File recipeWrapFile;
+	private File modHashFile;
 
 	@EventHandler
 	public void preInit(FMLPreInitializationEvent event) {
-		configDir = new File(event.getModConfigurationDirectory(), "BlockDrops");
-		wraps = new File(configDir, "blockdrops.key");
-		hash = new File(configDir, "hash.key");
+		File configDir = new File(event.getModConfigurationDirectory(), "BlockDrops");
+		recipeWrapFile = new File(configDir, "blockdrops.key");
+		modHashFile = new File(configDir, "modVersions.key");
 		Configuration config = new Configuration(new File(configDir, "config.cfg"));
 		config.load();
 		all = config.getBoolean("allDrops", Configuration.CATEGORY_CLIENT, false, "Show block drops of any block.");
@@ -85,6 +88,18 @@ public class BlockDrops {
 	}
 
 	@EventHandler
+	public void init(FMLInitializationEvent event) throws FileNotFoundException {
+		if (recipeWrapFile.exists()) {
+			recipeWrappers = gson.fromJson(
+					new BufferedReader(new FileReader(recipeWrapFile)),
+					new TypeToken<List<Wrapper>>(){}.getType());
+		}
+		else {
+			recipeWrappers = Lists.newArrayList();
+		}
+	}
+
+	@EventHandler
 	public void postInit(FMLPostInitializationEvent event) throws IOException {
 		NetHandlerPlayClient netHandler = new NetHandlerPlayClient(Minecraft.getMinecraft(), new GuiScreenDemo(), new NetworkManager(EnumPacketDirection.CLIENTBOUND), new GameProfile(UUID.randomUUID(), this.toString().toLowerCase().concat(MODID)));
 		try {
@@ -96,45 +111,58 @@ public class BlockDrops {
 		} catch (Throwable t) {
 		}
 
-		StringBuilder s = new StringBuilder();
-		List<ModContainer> mods = Lists.newArrayList(Loader.instance().getActiveModList());
-		Collections.sort(mods, new Comparator<ModContainer>() {
-			@Override
-			public int compare(ModContainer o1, ModContainer o2) {
-				return o1.getModId().compareTo(o1.getModId());
-			}
-		});
-		for (ModContainer m : mods) {
-			s.append(m.getModId() + m.getVersion());
+		Map<String, String> expectedModVersions;
+		boolean hasChanged = false;
+		if (modHashFile.exists()) {
+			expectedModVersions = gson.fromJson(
+					new BufferedReader(new FileReader(modHashFile)),
+					new TypeToken<Map<String, String>>(){}.getType());
 		}
-		int h = s.toString().hashCode();
-		boolean hashChanged = false;
-		if (!hash.exists()) {
-			hash.createNewFile();
-			FileWriter fw = new FileWriter(hash);
-			fw.write(gson.toJson(h));
-			fw.close();
-			hashChanged = true;
-		} else {
-			int x = gson.fromJson(new BufferedReader(new FileReader(hash)), new TypeToken<Integer>() {
-			}.getType());
-			if (x != h) {
-				hash.createNewFile();
-				FileWriter fw = new FileWriter(hash);
-				fw.write(gson.toJson(h));
-				fw.close();
-				hashChanged = true;
-			}
+		else {
+			expectedModVersions = new HashMap<String, String>();
+			hasChanged = true;
 		}
-		if (!wraps.exists() || hashChanged) {
-			wraps.createNewFile();
-			wrappers = Lists.newArrayList(Plugin.getRecipes());
-			FileWriter fw = new FileWriter(wraps);
-			fw.write(gson.toJson(wrappers));
+
+		Map<String, String> modVersions = new HashMap<String, String>();
+		modVersions.put("minecraft", "");
+
+		Set<String> updatedMods = new HashSet<String>();
+		if (!expectedModVersions.containsKey("minecraft")) {
+			updatedMods.add("minecraft");
+		}
+
+		for (ModContainer modContainer : Loader.instance().getActiveModList()) {
+			if (blacklist.contains(modContainer.getModId())) {
+				continue;
+			}
+
+			String modId = modContainer.getModId();
+			String version = modContainer.getVersion();
+			modVersions.put(modContainer.getModId(), modContainer.getVersion());
+
+			if (expectedModVersions.containsKey(modId) && version.equals(expectedModVersions.get(modId))) {
+				expectedModVersions.remove(modId);
+				logger.info("Skipping cached mod version {}@{}", modId, version);
+				continue;
+			}
+
+			updatedMods.add(modId);
+			hasChanged = true;
+		}
+
+		hasChanged = hasChanged || !expectedModVersions.isEmpty();
+
+		if (!recipeWrapFile.exists() || hasChanged) {
+			logger.info("Updating mod block drops for: {}", updatedMods);
+			recipeWrappers.addAll(Plugin.getRecipes(updatedMods));
+
+			FileWriter fw = new FileWriter(modHashFile);
+			fw.write(gson.toJson(modVersions));
 			fw.close();
-		} else {
-			wrappers = gson.fromJson(new BufferedReader(new FileReader(wraps)), new TypeToken<List<Wrapper>>() {
-			}.getType());
+
+			fw = new FileWriter(recipeWrapFile);
+			fw.write(gson.toJson(recipeWrappers));
+			fw.close();
 		}
 	}
 
