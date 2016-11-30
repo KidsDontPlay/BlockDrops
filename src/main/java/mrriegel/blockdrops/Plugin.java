@@ -37,7 +37,7 @@ public class Plugin implements IModPlugin {
 	public void register(IModRegistry registry) {
 		registry.addRecipeCategories(new Category(registry.getJeiHelpers().getGuiHelper()));
 		registry.addRecipeHandlers(new Handler());
-		registry.addRecipes(BlockDrops.wrappers);
+		registry.addRecipes(BlockDrops.recipeWrappers);
 
 		for (Item i : Item.REGISTRY) {
 			if (i instanceof ItemPickaxe)
@@ -49,20 +49,23 @@ public class Plugin implements IModPlugin {
 	public void onRuntimeAvailable(IJeiRuntime jeiRuntime) {
 	}
 
-	public static List<Wrapper> getRecipes() {
+	public static List<Wrapper> getRecipes(Set<String> mods) {
 		List<Wrapper> res = Lists.newArrayList();
 		Set<BlockWrapper> blocks = Sets.newHashSet();
 		for (ResourceLocation r : Block.REGISTRY.getKeys()) {
-			if (BlockDrops.blacklist.contains(r.getResourceDomain()))
+			if (!mods.contains(r.getResourceDomain()))
 				continue;
+
 			Block b = Block.REGISTRY.getObject(r);
 			if (Item.getItemFromBlock(b) == null || b == Blocks.BEDROCK)
 				continue;
+
 			List<ItemStack> lis = Lists.newArrayList();
 			b.getSubBlocks(Item.getItemFromBlock(b), b.getCreativeTabToDisplayOn(), lis);
 			for (ItemStack s : lis)
 				blocks.add(new BlockWrapper(b, s.getItemDamage()));
 		}
+
 		List<BlockWrapper> x = Lists.newArrayList(blocks);
 		x.sort(new Comparator<BlockWrapper>() {
 			@Override
