@@ -10,20 +10,23 @@ import java.util.Set;
 import mezz.jei.api.IJeiRuntime;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.IModRegistry;
+import mezz.jei.api.ISubtypeRegistry;
 import mezz.jei.api.JEIPlugin;
+import mezz.jei.api.ingredients.IModIngredientRegistration;
+import mezz.jei.util.FakeClientPlayer;
+import mezz.jei.util.FakeClientWorld;
+import mrriegel.blockdrops.util.BlockWrapper;
+import mrriegel.blockdrops.util.Drop;
+import mrriegel.blockdrops.util.StackWrapper;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
-import net.minecraft.client.multiplayer.WorldClient;
-import net.minecraft.entity.monster.EntityZombie;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemPickaxe;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.EnumFacing;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraftforge.fml.common.ProgressManager;
-import net.minecraftforge.items.ItemHandlerHelper;
 
 import org.apache.commons.lang3.tuple.MutablePair;
 
@@ -49,13 +52,12 @@ public class Plugin implements IModPlugin {
 	public void onRuntimeAvailable(IJeiRuntime jeiRuntime) {
 	}
 
-	public static List<Wrapper> getRecipes(Set<String> mods) {
+	public static List<Wrapper> getRecipes(Set<String> mods, boolean all) {
 		List<Wrapper> res = Lists.newArrayList();
 		Set<BlockWrapper> blocks = Sets.newHashSet();
 		for (ResourceLocation r : Block.REGISTRY.getKeys()) {
-			if (!mods.contains(r.getResourceDomain()))
+			if (!all && !mods.contains(r.getResourceDomain()))
 				continue;
-
 			Block b = Block.REGISTRY.getObject(r);
 			if (Item.getItemFromBlock(b) == null || b == Blocks.BEDROCK)
 				continue;
@@ -65,7 +67,6 @@ public class Plugin implements IModPlugin {
 			for (ItemStack s : lis)
 				blocks.add(new BlockWrapper(b, s.getItemDamage()));
 		}
-
 		List<BlockWrapper> x = Lists.newArrayList(blocks);
 		x.sort(new Comparator<BlockWrapper>() {
 			@Override
@@ -105,11 +106,11 @@ public class Plugin implements IModPlugin {
 		boolean crashed = false;
 		for (int i = 0; i < BlockDrops.iteration; i++) {
 			for (int j = 0; j < 4; j++) {
-				List<ItemStack> list = wrap.block.getDrops(BlockDrops.world, BlockPos.ORIGIN, state, j);
+				List<ItemStack> list = wrap.block.getDrops(FakeClientWorld.getInstance(), BlockPos.ORIGIN, state, j);
 				List<ItemStack> lis = Lists.newArrayList(list);
 				try {
 					if (!crashed)
-						net.minecraftforge.event.ForgeEventFactory.fireBlockHarvesting(lis, BlockDrops.world, BlockPos.ORIGIN, state, j, 1f, false, BlockDrops.player);
+						net.minecraftforge.event.ForgeEventFactory.fireBlockHarvesting(lis, FakeClientWorld.getInstance(), BlockPos.ORIGIN, state, j, 1f, false, FakeClientPlayer.getInstance());
 				} catch (Throwable t) {
 					crashed = true;
 				}
@@ -149,7 +150,7 @@ public class Plugin implements IModPlugin {
 			}
 		}
 
-		Comparator<StackWrapper> comp = new Comparator<Plugin.StackWrapper>() {
+		Comparator<StackWrapper> comp = new Comparator<StackWrapper>() {
 			@Override
 			public int compare(StackWrapper o1, StackWrapper o2) {
 				int id = Integer.compare(Item.getIdFromItem(o1.stack.getItem()), Item.getIdFromItem(o2.stack.getItem()));
@@ -184,7 +185,8 @@ public class Plugin implements IModPlugin {
 			float s1 = getChance(stacks1, stack.stack);
 			float s2 = getChance(stacks2, stack.stack);
 			float s3 = getChance(stacks3, stack.stack);
-			drops.add(new Drop(stack.stack, s0, s1, s2, s3, pairs0.get(stack), pairs1.get(stack), pairs2.get(stack), pairs3.get(stack)));
+			if (stack.stack != null && stack.stack.getItem() != null)
+				drops.add(new Drop(stack.stack, s0, s1, s2, s3, pairs0.get(stack), pairs1.get(stack), pairs2.get(stack), pairs3.get(stack)));
 		}
 		return drops;
 
@@ -209,6 +211,8 @@ public class Plugin implements IModPlugin {
 	private static void add(List<StackWrapper> lis, ItemStack stack) {
 		if (lis == null)
 			lis = Lists.newArrayList();
+		if (stack == null || stack.getItem() == null)
+			return;
 		int con = contains(lis, stack);
 		if (con == -1)
 			lis.add(new StackWrapper(stack, stack.stackSize));
@@ -235,138 +239,11 @@ public class Plugin implements IModPlugin {
 		}
 	}
 
-	static class Drop {
-		public ItemStack out;
-		public float chance0, chance1, chance2, chance3;
-		public MutablePair<Integer, Integer> pair0, pair1, pair2, pair3;
-
-		@Override
-		public boolean equals(Object obj) {
-			if (this == obj)
-				return true;
-			if (obj == null)
-				return false;
-			if (getClass() != obj.getClass())
-				return false;
-			Drop other = (Drop) obj;
-			if (Float.floatToIntBits(chance0) != Float.floatToIntBits(other.chance0))
-				return false;
-			if (Float.floatToIntBits(chance1) != Float.floatToIntBits(other.chance1))
-				return false;
-			if (Float.floatToIntBits(chance2) != Float.floatToIntBits(other.chance2))
-				return false;
-			if (Float.floatToIntBits(chance3) != Float.floatToIntBits(other.chance3))
-				return false;
-			if (out == null) {
-				if (other.out != null)
-					return false;
-			} else if (!out.isItemEqual(other.out))
-				return false;
-			return true;
-		}
-
-		@Override
-		public String toString() {
-			return "Drop [out=" + out + ", chance0=" + chance0 + ", chance1=" + chance1 + ", chance2=" + chance2 + ", chance3=" + chance3 + ", pair0=" + pair0 + ", pair1=" + pair1 + ", pair2=" + pair2 + ", pair3=" + pair3 + "]";
-		}
-
-		public Drop(ItemStack out, float chance0, float chance1, float chance2, float chance3, MutablePair<Integer, Integer> pair0, MutablePair<Integer, Integer> pair1, MutablePair<Integer, Integer> pair2, MutablePair<Integer, Integer> pair3) {
-			super();
-			this.out = ItemHandlerHelper.copyStackWithSize(out, 1);
-			this.chance0 = chance0;
-			this.chance1 = chance1;
-			this.chance2 = chance2;
-			this.chance3 = chance3;
-			this.pair0 = pair0;
-			if (this.pair0 == null)
-				this.pair0 = new MutablePair<Integer, Integer>(0, 0);
-			this.pair1 = pair1;
-			if (this.pair1 == null)
-				this.pair1 = new MutablePair<Integer, Integer>(0, 0);
-			this.pair2 = pair2;
-			if (this.pair2 == null)
-				this.pair2 = new MutablePair<Integer, Integer>(0, 0);
-			this.pair3 = pair3;
-			if (this.pair3 == null)
-				this.pair3 = new MutablePair<Integer, Integer>(0, 0);
-			if (this.chance0 < 100)
-				this.pair0.setLeft(0);
-			if (this.chance1 < 100)
-				this.pair1.setLeft(0);
-			if (this.chance2 < 100)
-				this.pair2.setLeft(0);
-			if (this.chance3 < 100)
-				this.pair3.setLeft(0);
-		}
-
+	@Override
+	public void registerItemSubtypes(ISubtypeRegistry subtypeRegistry) {
 	}
 
-	static class StackWrapper {
-		ItemStack stack;
-		int size;
-
-		@Override
-		public boolean equals(Object obj) {
-			if (obj instanceof StackWrapper)
-				return ItemHandlerHelper.canItemStacksStack(stack, ((StackWrapper) obj).stack);
-			return false;
-		}
-
-		public StackWrapper(ItemStack stack, int num) {
-			super();
-			this.stack = stack;
-			this.size = num;
-		}
-
-		@Override
-		public int hashCode() {
-			final int prime = 31;
-			int result = 1;
-			result = prime * result + Item.getIdFromItem(stack.getItem());
-			result = prime * result + stack.getItemDamage();
-			result = prime * result + (stack.getTagCompound() == null ? 0 : stack.getTagCompound().hashCode());
-			return result;
-		}
-
-		@Override
-		public String toString() {
-			return "StackWrapper [stack=" + stack + ", num=" + size + "]";
-		}
-
-	}
-
-	static class BlockWrapper {
-		Block block;
-		int meta;
-
-		public BlockWrapper(Block block, int meta) {
-			this.block = block;
-			this.meta = meta;
-		}
-
-		@Override
-		public String toString() {
-			return "BlockWrapper [block=" + block + ", meta=" + meta + "]";
-		}
-
-		@Override
-		public boolean equals(Object obj) {
-			if (obj instanceof BlockWrapper)
-				return block == ((BlockWrapper) obj).block && meta == ((BlockWrapper) obj).meta;
-			return false;
-		}
-
-		IBlockState getState() {
-			int m = Item.getItemFromBlock(block).getMetadata(meta);
-			try {
-				return block.onBlockPlaced(new WorldClient(null, null, 0, null, null), BlockPos.ORIGIN, EnumFacing.UP, 0, 0, 0, m, new EntityZombie(null));
-			} catch (Exception e) {
-				return block.getStateFromMeta(m);
-			}
-		}
-
-		ItemStack getStack() {
-			return new ItemStack(block, 1, meta);
-		}
+	@Override
+	public void registerIngredients(IModIngredientRegistration registry) {
 	}
 }

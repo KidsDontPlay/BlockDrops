@@ -4,8 +4,9 @@ import java.util.Collections;
 import java.util.List;
 
 import mezz.jei.api.gui.ITooltipCallback;
+import mezz.jei.api.ingredients.IIngredients;
 import mezz.jei.api.recipe.BlankRecipeWrapper;
-import mrriegel.blockdrops.Plugin.Drop;
+import mrriegel.blockdrops.util.Drop;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.text.TextFormatting;
@@ -26,12 +27,12 @@ public class Wrapper extends BlankRecipeWrapper implements ITooltipCallback<Item
 	}
 
 	@Override
-	public List getInputs() {
+	public List<ItemStack> getInputs() {
 		return Collections.singletonList(in);
 	}
 
 	@Override
-	public List getOutputs() {
+	public List<ItemStack> getOutputs() {
 		List<ItemStack> lis = Lists.newArrayList();
 		for (Drop d : out)
 			lis.add(d.out);
@@ -106,5 +107,11 @@ public class Wrapper extends BlankRecipeWrapper implements ITooltipCallback<Item
 
 	public void setOut(List<Drop> out) {
 		this.out = out;
+	}
+
+	@Override
+	public void getIngredients(IIngredients ingredients) {
+		ingredients.setInputs(ItemStack.class, getInputs());
+		ingredients.setOutputs(ItemStack.class, getOutputs());
 	}
 }

@@ -4,7 +4,7 @@ import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.List;
 
-import mrriegel.blockdrops.Plugin.Drop;
+import mrriegel.blockdrops.util.Drop;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
@@ -47,6 +47,7 @@ public class WrapperJson implements JsonDeserializer<Wrapper>, JsonSerializer<Wr
 		return json;
 	}
 
+	@SuppressWarnings("serial")
 	@Override
 	public Wrapper deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
 		Wrapper wrap = new Wrapper(null, Collections.EMPTY_LIST);
