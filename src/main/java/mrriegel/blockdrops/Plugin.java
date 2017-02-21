@@ -7,12 +7,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import mezz.jei.api.IJeiRuntime;
-import mezz.jei.api.IModPlugin;
+import mezz.jei.api.BlankModPlugin;
 import mezz.jei.api.IModRegistry;
-import mezz.jei.api.ISubtypeRegistry;
 import mezz.jei.api.JEIPlugin;
-import mezz.jei.api.ingredients.IModIngredientRegistration;
 import mezz.jei.util.FakeClientPlayer;
 import mezz.jei.util.FakeClientWorld;
 import mrriegel.blockdrops.util.BlockWrapper;
@@ -32,10 +29,9 @@ import org.apache.commons.lang3.tuple.MutablePair;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 
 @JEIPlugin
-public class Plugin implements IModPlugin {
+public class Plugin extends BlankModPlugin {
 	@Override
 	public void register(IModRegistry registry) {
 		registry.addRecipeCategories(new Category(registry.getJeiHelpers().getGuiHelper()));
@@ -48,27 +44,23 @@ public class Plugin implements IModPlugin {
 		}
 	}
 
-	@Override
-	public void onRuntimeAvailable(IJeiRuntime jeiRuntime) {
-	}
-
-	public static List<Wrapper> getRecipes(Set<String> mods, boolean all) {
+	public static List<Wrapper> getRecipes(Set<String> mods, Set<String> blacklist, boolean all) {
 		List<Wrapper> res = Lists.newArrayList();
-		Set<BlockWrapper> blocks = Sets.newHashSet();
+		List<BlockWrapper> blocks = Lists.newArrayList();
 		for (ResourceLocation r : Block.REGISTRY.getKeys()) {
 			if (!all && !mods.contains(r.getResourceDomain()))
 				continue;
 			Block b = Block.REGISTRY.getObject(r);
 			if (Item.getItemFromBlock(b) == null || b == Blocks.BEDROCK)
 				continue;
-
+			if (blacklist.stream().anyMatch(s -> s.equalsIgnoreCase(r.getResourceDomain())))
+				continue;
 			List<ItemStack> lis = Lists.newArrayList();
 			b.getSubBlocks(Item.getItemFromBlock(b), b.getCreativeTabToDisplayOn(), lis);
 			for (ItemStack s : lis)
 				blocks.add(new BlockWrapper(b, s.getItemDamage()));
 		}
-		List<BlockWrapper> x = Lists.newArrayList(blocks);
-		x.sort(new Comparator<BlockWrapper>() {
+		blocks.sort(new Comparator<BlockWrapper>() {
 			@Override
 			public int compare(BlockWrapper o1, BlockWrapper o2) {
 				int id = Integer.compare(Block.getIdFromBlock(o1.block), Block.getIdFromBlock(o2.block));
@@ -77,8 +69,8 @@ public class Plugin implements IModPlugin {
 			}
 		});
 
-		ProgressManager.ProgressBar bar = ProgressManager.push("Analysing Drops", x.size());
-		for (BlockWrapper w : x) {
+		ProgressManager.ProgressBar bar = ProgressManager.push("Analysing Drops", blocks.size());
+		for (BlockWrapper w : blocks) {
 			List<Drop> drops;
 			bar.step(w.block.getRegistryName().toString());
 			try {
@@ -150,13 +142,10 @@ public class Plugin implements IModPlugin {
 			}
 		}
 
-		Comparator<StackWrapper> comp = new Comparator<StackWrapper>() {
-			@Override
-			public int compare(StackWrapper o1, StackWrapper o2) {
-				int id = Integer.compare(Item.getIdFromItem(o1.stack.getItem()), Item.getIdFromItem(o2.stack.getItem()));
-				int meta = Integer.compare(o1.stack.getItemDamage(), o2.stack.getItemDamage());
-				return id != 0 ? id : meta;
-			}
+		Comparator<StackWrapper> comp = (o1, o2) -> {
+			int id = Integer.compare(Item.getIdFromItem(o1.stack.getItem()), Item.getIdFromItem(o2.stack.getItem()));
+			int meta = Integer.compare(o1.stack.getItemDamage(), o2.stack.getItemDamage());
+			return id != 0 ? id : meta;
 		};
 
 		List<StackWrapper> stacks = Lists.newArrayList();
@@ -237,13 +226,5 @@ public class Plugin implements IModPlugin {
 			MutablePair<Integer, Integer> pair = new MutablePair<Integer, Integer>(Math.min(min, w.size), Math.max(max, w.size));
 			map.put(w, pair);
 		}
-	}
-
-	@Override
-	public void registerItemSubtypes(ISubtypeRegistry subtypeRegistry) {
-	}
-
-	@Override
-	public void registerIngredients(IModIngredientRegistration registry) {
 	}
 }

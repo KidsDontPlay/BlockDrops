@@ -9,9 +9,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Predicate;
 
-import net.minecraft.item.ItemStack;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.Mod;
@@ -34,7 +32,7 @@ import com.google.gson.GsonBuilder;
 @Mod(modid = BlockDrops.MODID, name = BlockDrops.MODNAME, version = BlockDrops.VERSION, dependencies = "after:JEI@[3.0.0,);", clientSideOnly = true)
 public class BlockDrops {
 	public static final String MODID = "blockdrops";
-	public static final String VERSION = "1.1.0";
+	public static final String VERSION = "1.1.1";
 	public static final String MODNAME = "Block Drops";
 
 	@Instance(BlockDrops.MODID)
@@ -42,7 +40,7 @@ public class BlockDrops {
 
 	public static boolean all, showChance, showMinMax;
 	public static int iteration;
-	public static List<String> blacklist;
+	public static Set<String> blacklist;
 
 	public static List<Wrapper> recipeWrappers;
 	public static Gson gson;
@@ -62,7 +60,7 @@ public class BlockDrops {
 		showChance = config.getBoolean("showChance", Configuration.CATEGORY_CLIENT, true, "Show chance of drops.");
 		showMinMax = config.getBoolean("showMinMax", Configuration.CATEGORY_CLIENT, true, "Show minimum and maximum of drops.");
 		iteration = config.getInt("iteration", Configuration.CATEGORY_CLIENT, 5000, 1, 99999, "Number of calculation. The higher the more precise the chance.");
-		blacklist = Lists.newArrayList(config.getStringList("blacklist", Configuration.CATEGORY_CLIENT, new String[] { "flatcoloredblocks", "chisel" }, "Mod IDs of mods that won't be scanned."));
+		blacklist = Sets.newHashSet(config.getStringList("blacklist", Configuration.CATEGORY_CLIENT, new String[] { "flatcoloredblocks", "chisel" }, "Mod IDs of mods that won't be scanned."));
 
 		if (config.hasChanged()) {
 			config.save();
@@ -123,20 +121,13 @@ public class BlockDrops {
 			logger.info("Updating mod block drops for: {}", updatedMods);
 			updatedMods.add("minecraft");
 			if (recipeWrappers == null || !recipeWrapFile.exists()) {
-				recipeWrappers = Lists.newArrayList(Plugin.getRecipes(updatedMods, true));
+				recipeWrappers = Lists.newArrayList(Plugin.getRecipes(updatedMods, blacklist, true));
 			} else {
-				recipeWrappers.addAll(Plugin.getRecipes(updatedMods, false));
+				recipeWrappers.addAll(Plugin.getRecipes(updatedMods, blacklist, false));
 				List<Wrapper> wraps = Lists.newArrayList();
+
 				for (Wrapper w : recipeWrappers)
-					if (w.getIn() != null && w.getIn().getItem() != null && new Predicate<List<ItemStack>>() {
-						@Override
-						public boolean test(List<ItemStack> input) {
-							for (ItemStack s : input)
-								if (s == null || s.getItem() == null)
-									return false;
-							return true;
-						}
-					}.test(w.getOutputs()))
+					if (w.getIn() != null && w.getIn().getItem() != null && w.getOutputs().stream().allMatch(s -> s != null && s.getItem() != null))
 						wraps.add(w);
 				recipeWrappers = wraps;
 			}

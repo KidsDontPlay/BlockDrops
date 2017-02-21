@@ -20,12 +20,16 @@ plugins {
     id "net.minecraftforge.gradle.forge" version "2.0.2"
 }
 */
-version = "1.10.2-1.1.0"
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+version = "1.10.2-1.1.1"
 group= "mrriegel.blockdrops" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
 archivesBaseName = "BlockDrops"
 
 minecraft {
-    version = "1.10.2-12.18.2.2099"
+    version = "1.10.2-12.18.3.2185"
     runDir = "run"
     
     // the mappings can be changed at any time, and must be in the following format.
@@ -38,7 +42,7 @@ minecraft {
 }
 
 dependencies {
-    deobfCompile "mezz.jei:jei_1.10.2:3.13.3.373"
+    deobfCompile "mezz.jei:jei_1.10.2:3.14.6.412"
 }
 
 repositories {
