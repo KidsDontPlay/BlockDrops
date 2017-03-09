@@ -12,7 +12,7 @@ public class Category extends BlankRecipeCategory<Wrapper> {
 	private final IDrawable background;
 
 	public Category(IGuiHelper h) {
-		background = h.createDrawable(new ResourceLocation(BlockDrops.MODID + ":gui/GUI.png"), 0, 0, 166, 74);
+		background = h.createDrawable(new ResourceLocation(BlockDrops.MODID + ":gui/gui.png"), 0, 0, 166, 74);
 	}
 
 	@Override
@@ -34,7 +34,7 @@ public class Category extends BlankRecipeCategory<Wrapper> {
 	public void setRecipe(IRecipeLayout recipeLayout, Wrapper recipeWrapper, IIngredients ingredients) {
 		IGuiItemStackGroup itemStacks = recipeLayout.getItemStacks();
 		itemStacks.init(0, true, 74, 5);
-		itemStacks.setFromRecipe(0, recipeWrapper.getInputs());
+		itemStacks.set(0, recipeWrapper.getInputs());
 		itemStacks.addTooltipCallback(recipeWrapper);
 		for (int i = 0; i < recipeWrapper.getOutputs().size(); i++) {
 			if (i < 8)

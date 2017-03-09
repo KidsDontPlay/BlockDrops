@@ -59,7 +59,7 @@ public class WrapperJson implements JsonDeserializer<Wrapper>, JsonSerializer<Wr
 		int length = json.getAsJsonObject().get("length").getAsInt();
 		List<Drop> lis = Lists.newArrayList();
 		for (int i = 0; i < length; i++) {
-			Drop d = new Drop(null, 0, 0, 0, 0, null, null, null, null);
+			Drop d = new Drop(ItemStack.EMPTY, 0, 0, 0, 0, null, null, null, null);
 			String n = json.getAsJsonObject().get("name" + i).getAsString();
 			int m = json.getAsJsonObject().get("meta" + i).getAsInt();
 			ItemStack st = new ItemStack(Item.REGISTRY.getObject(new ResourceLocation(n)), 1, m);
@@ -76,7 +76,6 @@ public class WrapperJson implements JsonDeserializer<Wrapper>, JsonSerializer<Wr
 			}.getType());
 			d.pair3 = BlockDrops.gson.fromJson(json.getAsJsonObject().get("3pair" + i).getAsString(), new TypeToken<MutablePair<Integer, Integer>>() {
 			}.getType());
-
 			lis.add(d);
 		}
 		wrap.setOut(lis);

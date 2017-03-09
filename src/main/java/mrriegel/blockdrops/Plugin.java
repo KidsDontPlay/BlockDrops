@@ -21,12 +21,14 @@ import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemPickaxe;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.NonNullList;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraftforge.fml.common.ProgressManager;
 
 import org.apache.commons.lang3.tuple.MutablePair;
 
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
@@ -55,7 +57,7 @@ public class Plugin extends BlankModPlugin {
 				continue;
 			if (blacklist.stream().anyMatch(s -> s.equalsIgnoreCase(r.getResourceDomain())))
 				continue;
-			List<ItemStack> lis = Lists.newArrayList();
+			NonNullList<ItemStack> lis = NonNullList.create();
 			b.getSubBlocks(Item.getItemFromBlock(b), b.getCreativeTabToDisplayOn(), lis);
 			for (ItemStack s : lis)
 				blocks.add(new BlockWrapper(b, s.getItemDamage()));
@@ -79,7 +81,7 @@ public class Plugin extends BlankModPlugin {
 				BlockDrops.logger.error("An error occured while calculating drops for " + w.block.getLocalizedName() + " (" + e.getClass() + ")");
 				drops = Collections.EMPTY_LIST;
 			}
-			if (drops.isEmpty())
+			if (drops.isEmpty() || w.getStack().isEmpty())
 				continue;
 			res.add(new Wrapper(w.getStack(), drops));
 		}
@@ -107,6 +109,7 @@ public class Plugin extends BlankModPlugin {
 					crashed = true;
 				}
 				lis.removeAll(Collections.singleton(null));
+				Iterables.removeIf(lis, s -> s.isEmpty());
 				switch (j) {
 				case 0:
 					add(pairs0, lis);
@@ -122,7 +125,7 @@ public class Plugin extends BlankModPlugin {
 					break;
 				}
 				for (ItemStack s : lis) {
-					if (s == null)
+					if (s.isEmpty())
 						continue;
 					switch (j) {
 					case 0:
@@ -204,10 +207,10 @@ public class Plugin extends BlankModPlugin {
 			return;
 		int con = contains(lis, stack);
 		if (con == -1)
-			lis.add(new StackWrapper(stack, stack.stackSize));
+			lis.add(new StackWrapper(stack, stack.getCount()));
 		else {
 			StackWrapper tmp = lis.get(con);
-			tmp.size += stack.stackSize;
+			tmp.size += stack.getCount();
 			lis.set(con, tmp);
 		}
 	}

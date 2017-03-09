@@ -7,6 +7,7 @@ import net.minecraft.entity.monster.EntityZombie;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumFacing;
+import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.BlockPos;
 
 public class BlockWrapper {
@@ -28,7 +29,7 @@ public class BlockWrapper {
 	public IBlockState getState() {
 		int m = Item.getItemFromBlock(block).getMetadata(meta);
 		try {
-			return block.onBlockPlaced(FakeClientWorld.getInstance(), BlockPos.ORIGIN, EnumFacing.UP, 0, 0, 0, m, new EntityZombie(null));
+			return block.getStateForPlacement(FakeClientWorld.getInstance(), BlockPos.ORIGIN, EnumFacing.UP, 0, 0, 0, m, new EntityZombie(FakeClientWorld.getInstance()), EnumHand.MAIN_HAND);
 		} catch (Exception e) {
 			return block.getStateFromMeta(m);
 		}

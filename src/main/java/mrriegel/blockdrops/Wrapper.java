@@ -26,12 +26,10 @@ public class Wrapper extends BlankRecipeWrapper implements ITooltipCallback<Item
 		this.out = out;
 	}
 
-	@Override
 	public List<ItemStack> getInputs() {
 		return Collections.singletonList(in);
 	}
 
-	@Override
 	public List<ItemStack> getOutputs() {
 		List<ItemStack> lis = Lists.newArrayList();
 		for (Drop d : out)

@@ -11,11 +11,6 @@ public class Handler implements IRecipeHandler<Wrapper> {
 	}
 
 	@Override
-	public String getRecipeCategoryUid() {
-		return BlockDrops.MODID;
-	}
-
-	@Override
 	public IRecipeWrapper getRecipeWrapper(Wrapper recipe) {
 		return recipe;
 	}
