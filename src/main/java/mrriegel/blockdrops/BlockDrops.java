@@ -29,7 +29,7 @@ import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
-@Mod(modid = BlockDrops.MODID, name = BlockDrops.MODNAME, version = BlockDrops.VERSION, dependencies = "after:JEI@[4.2.0,);", clientSideOnly = true)
+@Mod(modid = BlockDrops.MODID, name = BlockDrops.MODNAME, version = BlockDrops.VERSION, dependencies = "after:JEI@[4.3.1,);", clientSideOnly = true)
 public class BlockDrops {
 	public static final String MODID = "blockdrops";
 	public static final String VERSION = "1.2.0";
@@ -125,10 +125,10 @@ public class BlockDrops {
 			} else {
 				recipeWrappers.addAll(Plugin.getRecipes(updatedMods, blacklist, false));
 				List<Wrapper> wraps = Lists.newArrayList();
-
 				for (Wrapper w : recipeWrappers)
 					if (w.getIn() != null && w.getIn().getItem() != null && w.getOutputs().stream().allMatch(s -> s != null && s.getItem() != null))
-						wraps.add(w);
+						if (!wraps.stream().anyMatch(wr -> wr.getIn().isItemEqual(w.getIn())))
+							wraps.add(w);
 				recipeWrappers = wraps;
 			}
 
