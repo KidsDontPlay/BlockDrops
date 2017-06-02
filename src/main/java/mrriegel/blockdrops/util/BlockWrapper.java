@@ -1,6 +1,5 @@
 package mrriegel.blockdrops.util;
 
-import mezz.jei.plugins.vanilla.util.FakeClientWorld;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.monster.EntityZombie;
