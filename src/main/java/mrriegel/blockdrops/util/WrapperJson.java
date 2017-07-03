@@ -1,13 +1,8 @@
-package mrriegel.blockdrops;
+package mrriegel.blockdrops.util;
 
 import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.List;
-
-import mrriegel.blockdrops.util.Drop;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.ResourceLocation;
 
 import org.apache.commons.lang3.tuple.MutablePair;
 
@@ -20,6 +15,12 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
+
+import mrriegel.blockdrops.BlockDrops;
+import mrriegel.blockdrops.Wrapper;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.ResourceLocation;
+import net.minecraftforge.fml.common.registry.ForgeRegistries;
 
 public class WrapperJson implements JsonDeserializer<Wrapper>, JsonSerializer<Wrapper> {
 
@@ -53,7 +54,7 @@ public class WrapperJson implements JsonDeserializer<Wrapper>, JsonSerializer<Wr
 		Wrapper wrap = new Wrapper(null, Collections.EMPTY_LIST);
 		String name = json.getAsJsonObject().get("name").getAsString();
 		int meta = json.getAsJsonObject().get("meta").getAsInt();
-		ItemStack stack = new ItemStack(Item.REGISTRY.getObject(new ResourceLocation(name)), 1, meta);
+		ItemStack stack = new ItemStack(ForgeRegistries.ITEMS.getValue(new ResourceLocation(name)), 1, meta);
 		wrap.setIn(stack);
 
 		int length = json.getAsJsonObject().get("length").getAsInt();
@@ -62,7 +63,7 @@ public class WrapperJson implements JsonDeserializer<Wrapper>, JsonSerializer<Wr
 			Drop d = new Drop(ItemStack.EMPTY, 0, 0, 0, 0, null, null, null, null);
 			String n = json.getAsJsonObject().get("name" + i).getAsString();
 			int m = json.getAsJsonObject().get("meta" + i).getAsInt();
-			ItemStack st = new ItemStack(Item.REGISTRY.getObject(new ResourceLocation(n)), 1, m);
+			ItemStack st = new ItemStack(ForgeRegistries.ITEMS.getValue(new ResourceLocation(n)), 1, m);
 			d.out = st;
 			d.chance0 = json.getAsJsonObject().get("0chance" + i).getAsFloat();
 			d.chance1 = json.getAsJsonObject().get("1chance" + i).getAsFloat();

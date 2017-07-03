@@ -4,9 +4,9 @@ import java.util.UUID;
 
 import javax.annotation.Nullable;
 
-import net.minecraft.entity.player.EntityPlayer;
-
 import com.mojang.authlib.GameProfile;
+
+import net.minecraft.entity.player.EntityPlayer;
 
 /**
  * 

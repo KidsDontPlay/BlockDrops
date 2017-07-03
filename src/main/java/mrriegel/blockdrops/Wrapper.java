@@ -2,21 +2,20 @@ package mrriegel.blockdrops;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+
+import org.apache.commons.lang3.tuple.MutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 
 import mezz.jei.api.gui.ITooltipCallback;
 import mezz.jei.api.ingredients.IIngredients;
-import mezz.jei.api.recipe.BlankRecipeWrapper;
+import mezz.jei.api.recipe.IRecipeWrapper;
 import mrriegel.blockdrops.util.Drop;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.text.TextFormatting;
 
-import org.apache.commons.lang3.tuple.MutablePair;
-import org.apache.commons.lang3.tuple.Pair;
-
-import com.google.common.collect.Lists;
-
-public class Wrapper extends BlankRecipeWrapper implements ITooltipCallback<ItemStack> {
+public class Wrapper implements IRecipeWrapper, ITooltipCallback<ItemStack> {
 
 	private ItemStack in;
 	private List<Drop> out;
@@ -31,10 +30,7 @@ public class Wrapper extends BlankRecipeWrapper implements ITooltipCallback<Item
 	}
 
 	public List<ItemStack> getOutputs() {
-		List<ItemStack> lis = Lists.newArrayList();
-		for (Drop d : out)
-			lis.add(d.out);
-		return lis;
+		return out.stream().map(d -> d.out).collect(Collectors.toList());
 	}
 
 	private float chance(ItemStack s, int fortune) {
