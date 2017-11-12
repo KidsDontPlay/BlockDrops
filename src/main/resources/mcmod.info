@@ -2,7 +2,7 @@
 {
   "modid": "blockdrops",
   "name": "Block Drops",
-  "description": "Block Drops (JEI Addon)",
+  "description": "This mod adds a tab to JEI that shows what will be droped when a block is broken.",
   "version": "${version}",
   "mcversion": "${mcversion}",
   "url": "",
