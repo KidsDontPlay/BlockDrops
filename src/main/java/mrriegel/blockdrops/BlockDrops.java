@@ -7,15 +7,19 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
+import java.lang.reflect.Field;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.Logger;
+import org.lwjgl.input.Keyboard;
 
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -25,30 +29,42 @@ import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import mezz.jei.gui.recipes.RecipeLayout;
+import mezz.jei.gui.recipes.RecipesGui;
 import mrriegel.blockdrops.util.Drop;
 import mrriegel.blockdrops.util.FakeClientPlayer;
 import mrriegel.blockdrops.util.FakeClientWorld;
 import mrriegel.blockdrops.util.StackWrapper;
 import mrriegel.blockdrops.util.WrapperJson;
 import net.minecraft.block.Block;
+import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
+import net.minecraft.client.Minecraft;
 import net.minecraft.init.Blocks;
+import net.minecraft.init.Items;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.NonNullList;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.RayTraceResult;
+import net.minecraft.world.IBlockAccess;
+import net.minecraftforge.client.event.GuiScreenEvent.KeyboardInputEvent;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.common.Mod.EventHandler;
 import net.minecraftforge.fml.common.Mod.Instance;
 import net.minecraftforge.fml.common.ProgressManager;
 import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.registry.ForgeRegistries;
+import net.minecraftforge.fml.relauncher.ReflectionHelper;
 
-@Mod(modid = BlockDrops.MODID, name = BlockDrops.MODNAME, version = BlockDrops.VERSION, dependencies = "required-after:jei@[4.4.0,);", clientSideOnly = true)
+@Mod(modid = BlockDrops.MODID, name = BlockDrops.MODNAME, version = BlockDrops.VERSION, acceptedMinecraftVersions = "[1.12,1.13)", dependencies = "required-after:jei@[4.4.0,);", clientSideOnly = true)
+@EventBusSubscriber
 public class BlockDrops {
 	public static final String MODID = "blockdrops";
 	public static final String VERSION = "1.3.0";
@@ -84,6 +100,26 @@ public class BlockDrops {
 			config.save();
 		gson = new GsonBuilder().setPrettyPrinting().registerTypeAdapter(Wrapper.class, new WrapperJson()).create();
 		logger = event.getModLog();
+		Block b = new Block(Material.ROCK) {
+			@Override
+			public java.util.List<ItemStack> getDrops(IBlockAccess world, BlockPos pos, IBlockState state, int fortune) {
+				List<ItemStack> lis = Stream.of(new ItemStack(Blocks.OBSIDIAN), new ItemStack(Items.FIRE_CHARGE)).collect(Collectors.toList());
+				lis.add(new ItemStack(Blocks.ACACIA_FENCE));
+				lis.add(new ItemStack(Blocks.BEDROCK));
+				lis.add(new ItemStack(Blocks.RED_SANDSTONE));
+				lis.add(new ItemStack(Blocks.BLUE_SHULKER_BOX));
+				lis.add(new ItemStack(Blocks.LOG));
+				lis.add(new ItemStack(Items.EGG));
+				lis.add(new ItemStack(Items.DRAGON_BREATH));
+				lis.add(new ItemStack(Items.BREAD));
+				lis.add(new ItemStack(Items.IRON_HOE));
+				lis.add(new ItemStack(Items.RECORD_CAT));
+				return lis;
+			}
+		}.setRegistryName("blockblock");
+		ItemBlock ib = (ItemBlock) new ItemBlock(b).setRegistryName(b.getRegistryName().toString());
+		ForgeRegistries.BLOCKS.register(b);
+		ForgeRegistries.ITEMS.register(ib);
 	}
 
 	@SuppressWarnings("serial")
@@ -124,6 +160,7 @@ public class BlockDrops {
 			Iterables.removeIf(recipeWrappers, w -> check.contains(w.getIn().getItem().getRegistryName().getResourceDomain()));
 			recipeWrappers.addAll(Lists.newArrayList(getRecipes(check)));
 		}
+		recipeWrappers.forEach(w -> w.getOut().removeIf(d -> d.out.isEmpty()));
 
 		Writer fw = new BufferedWriter(new FileWriter(modHashFile));
 		fw.write(gson.toJson(mods));
@@ -322,6 +359,34 @@ public class BlockDrops {
 
 	private static ItemStack getStack(IBlockState state) {
 		return state.getBlock().getPickBlock(state, new RayTraceResult(FakeClientPlayer.getInstance()), FakeClientWorld.getInstance(), BlockPos.ORIGIN, FakeClientPlayer.getInstance());
+	}
+
+	private static Field recipeLayouts, recipeWrapper;
+
+	@SubscribeEvent
+	public static void key(KeyboardInputEvent.Post event) throws IllegalArgumentException, IllegalAccessException {
+		if (Minecraft.getMinecraft().currentScreen instanceof RecipesGui) {
+			if (recipeLayouts == null) {
+				recipeLayouts = ReflectionHelper.findField(RecipesGui.class, "recipeLayouts");
+				recipeWrapper = ReflectionHelper.findField(RecipeLayout.class, "recipeWrapper");
+			}
+			List<Wrapper> wraps = ((List<RecipeLayout>) recipeLayouts.get(Minecraft.getMinecraft().currentScreen)).stream().map(rl -> {
+				try {
+					return recipeWrapper.get(rl);
+				} catch (IllegalArgumentException | IllegalAccessException e) {
+					return null;
+				}
+			}).filter(o -> o instanceof Wrapper).map(o -> (Wrapper) o).collect(Collectors.toList());
+			for (Wrapper w : wraps) {
+				if (Keyboard.isKeyDown(Keyboard.KEY_LEFT)) {
+					w.decreaseIndex();
+					((RecipesGui) Minecraft.getMinecraft().currentScreen).onStateChange();
+				} else if (Keyboard.isKeyDown(Keyboard.KEY_RIGHT)) {
+					w.increaseIndex();
+					((RecipesGui) Minecraft.getMinecraft().currentScreen).onStateChange();
+				}
+			}
+		}
 	}
 
 }

@@ -13,16 +13,19 @@ import mezz.jei.api.recipe.IRecipeWrapper;
 import mrriegel.blockdrops.util.Drop;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.text.TextFormatting;
 
 public class Wrapper implements IRecipeWrapper, ITooltipCallback<ItemStack> {
 
 	private ItemStack in;
 	private List<Drop> out;
+	private int index = 0, maxIndex;
 
 	public Wrapper(ItemStack in, List<Drop> out) {
 		this.in = in;
 		this.out = out;
+		this.maxIndex = Math.max(0, out.size() - 9);
 	}
 
 	public List<ItemStack> getInputs() {
@@ -84,6 +87,8 @@ public class Wrapper implements IRecipeWrapper, ITooltipCallback<ItemStack> {
 			String minmax = BlockDrops.showMinMax ? "Min: " + pair(ingredient, (int) x).getLeft() + "  Max: " + pair(ingredient, (int) x).getRight() : "";
 			if (BlockDrops.showChance || BlockDrops.showMinMax)
 				tooltip.add(TextFormatting.BLUE + "Fortune " + (0l != x ? I18n.format("enchantment.level." + x) : 0) + " " + TextFormatting.GRAY + chance + minmax);
+			if (out.size() > 9)
+				tooltip.add(TextFormatting.GRAY + "There are too many possible drops. Use left and right key to cycle.");
 		}
 	}
 
@@ -101,6 +106,7 @@ public class Wrapper implements IRecipeWrapper, ITooltipCallback<ItemStack> {
 
 	public void setOut(List<Drop> out) {
 		this.out = out;
+		this.maxIndex = Math.max(0, out.size() - 9);
 	}
 
 	@Override
@@ -108,4 +114,21 @@ public class Wrapper implements IRecipeWrapper, ITooltipCallback<ItemStack> {
 		ingredients.setInputs(ItemStack.class, getInputs());
 		ingredients.setOutputs(ItemStack.class, getOutputs());
 	}
+
+	public int getIndex() {
+		return index;
+	}
+
+	public void setIndex(int index) {
+		this.index = MathHelper.clamp(index, 0, maxIndex);
+	}
+
+	public void increaseIndex() {
+		this.index = MathHelper.clamp(index + 1, 0, maxIndex);
+	}
+
+	public void decreaseIndex() {
+		this.index = MathHelper.clamp(index - 1, 0, maxIndex);
+	}
+
 }

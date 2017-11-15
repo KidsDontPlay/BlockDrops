@@ -31,8 +31,6 @@ public class Category implements IRecipeCategory<Wrapper> {
 
 	@Override
 	public void drawExtras(Minecraft minecraft) {
-		//		IDrawable draw = getBackground();
-		//		GuiUtils.drawGradientRect(0, 0, 0, draw.getWidth(), draw.getHeight(), Color.RED.getRGB(), Color.GREEN.getRGB());
 		drawSlot(81, 1);
 		for (int i = 9; i < 170; i += 18)
 			drawSlot(i, 20);
@@ -49,12 +47,9 @@ public class Category implements IRecipeCategory<Wrapper> {
 		itemStacks.init(0, true, 81, 1);
 		itemStacks.set(0, recipeWrapper.getInputs());
 		itemStacks.addTooltipCallback(recipeWrapper);
-		for (int i = 0; i < recipeWrapper.getOutputs().size(); i++) {
-			if (i < 9)
-				itemStacks.init(i + 1, false, 9 + i * 18, 20);
-			else
-				itemStacks.init(i + 1, false, 9 + (i - 9) * 18, 38);
-			itemStacks.set(i + 1, recipeWrapper.getOutputs().get(i));
+		for (int i = 0; i < Math.min(recipeWrapper.getOutputs().size(), 9); i++) {
+			itemStacks.init(i + 1, false, 9 + i * 18, 20);
+			itemStacks.set(i + 1, recipeWrapper.getOutputs().get((i + recipeWrapper.getIndex())));
 		}
 	}
 
