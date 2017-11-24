@@ -15,6 +15,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.Logger;
@@ -176,19 +181,32 @@ public class BlockDrops {
 		});
 
 		ProgressManager.ProgressBar bar = ProgressManager.push("Analysing Drops", states.size());
+		ExecutorService threadPool = Executors.newCachedThreadPool(); // Pool to store all threads
+		List<Future<?>> runningBlockThreads = new ArrayList<>(); // List for all threads, used to sync up later
 		for (IBlockState st : states) {
-			List<Drop> drops;
-			bar.step(st.getBlock().getRegistryName().toString());
-			try {
-				drops = getList(st);
-			} catch (Throwable e) {
-				BlockDrops.logger.error("An error occured while calculating drops for " + st.getBlock().getLocalizedName() + " (" + e.getClass() + ")");
-				drops = Collections.emptyList();
-			}
-			if (drops.isEmpty())
-				continue;
-			res.add(new Wrapper(getStack(st), drops));
+			Future<?> future = threadPool.submit(() -> {
+				List<Drop> drops;
+				bar.step(st.getBlock().getRegistryName().toString());
+				try {
+					drops = getList(st);
+				} catch (Throwable e) {
+					BlockDrops.logger.error("An error occured while calculating drops for " + st.getBlock().getLocalizedName() + " (" + e.getClass() + ")");
+					drops = Collections.emptyList();
+				}
+				if (drops.isEmpty())
+					return;
+				res.add(new Wrapper(getStack(st), drops));
+			});
+			runningBlockThreads.add(future); // Add thread to sync list
 		}
+		try {
+			for (Future<?> thread : runningBlockThreads) {
+				thread.get(); // Sync all threads back to this thread
+			}
+		} catch (InterruptedException | ExecutionException ex) {
+			ex.printStackTrace();
+		}
+		threadPool.shutdown();
 		ProgressManager.pop(bar);
 		return res;
 
