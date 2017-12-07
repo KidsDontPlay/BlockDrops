@@ -135,7 +135,8 @@ public class BlockDrops {
 			Iterables.removeIf(recipeWrappers, w -> check.contains(w.getIn().getItem().getRegistryName().getResourceDomain()));
 			recipeWrappers.addAll(Lists.newArrayList(getRecipes(check)));
 		}
-		recipeWrappers.forEach(w -> w.getOut().removeIf(d -> d.out.isEmpty()));
+		recipeWrappers.removeIf(rw -> rw.getIn().isEmpty());
+		recipeWrappers.forEach(rw -> rw.getOut().removeIf(d -> d.out.isEmpty()));
 
 		Writer fw = new BufferedWriter(new FileWriter(modHashFile));
 		fw.write(gson.toJson(mods));
