@@ -8,18 +8,18 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.ArrayList;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.Logger;
@@ -57,6 +57,7 @@ import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.common.Mod.EventHandler;
 import net.minecraftforge.fml.common.Mod.Instance;
 import net.minecraftforge.fml.common.ProgressManager;
+import net.minecraftforge.fml.common.ProgressManager.ProgressBar;
 import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
@@ -67,13 +68,13 @@ import net.minecraftforge.fml.relauncher.ReflectionHelper;
 @EventBusSubscriber
 public class BlockDrops {
 	public static final String MODID = "blockdrops";
-	public static final String VERSION = "1.3.1";
+	public static final String VERSION = "1.4.0";
 	public static final String MODNAME = "Block Drops";
 
 	@Instance(BlockDrops.MODID)
 	public static BlockDrops instance;
 
-	public static boolean all, showChance, showMinMax;
+	public static boolean all, showChance, showMinMax, multithreaded;
 	public static int iteration;
 	public static Set<String> blacklist;
 
@@ -94,7 +95,8 @@ public class BlockDrops {
 		all = config.getBoolean("allDrops", Configuration.CATEGORY_CLIENT, false, "Show block drops of any block.");
 		showChance = config.getBoolean("showChance", Configuration.CATEGORY_CLIENT, true, "Show chance of drops.");
 		showMinMax = config.getBoolean("showMinMax", Configuration.CATEGORY_CLIENT, true, "Show minimum and maximum of drops.");
-		iteration = config.getInt("iteration", Configuration.CATEGORY_CLIENT, 5000, 1, 99999, "Number of calculation. The higher the more precise the chance.");
+		multithreaded = config.getBoolean("multithreaded", Configuration.CATEGORY_CLIENT, true, "Multithreaded calculation of drops");
+		iteration = config.getInt("iteration", Configuration.CATEGORY_CLIENT, 4000, 1, 99999, "Number of calculation. The higher the more precise the chance.");
 		blacklist = Sets.newHashSet(config.getStringList("blacklist", Configuration.CATEGORY_CLIENT, new String[] { "flatcoloredblocks", "chisel", "xtones", "wallpapercraft", "sonarcore", "microblockcbe" }, "Mod IDs of mods that won't be scanned."));
 		if (config.hasChanged())
 			config.save();
@@ -102,12 +104,13 @@ public class BlockDrops {
 		logger = event.getModLog();
 	}
 
-	@SuppressWarnings("serial")
 	@EventHandler
 	public void postInit(FMLPostInitializationEvent event) throws IOException {
 		if (recipeWrapFile.exists()) {
 			recipeWrappers = gson.fromJson(new BufferedReader(new FileReader(recipeWrapFile)), new TypeToken<List<Wrapper>>() {
 			}.getType());
+			if (recipeWrappers == null)
+				recipeWrappers = new ArrayList<>();
 		} else {
 			recipeWrappers = Lists.newArrayList();
 			recipeWrapFile.createNewFile();
@@ -137,7 +140,7 @@ public class BlockDrops {
 			//			}
 		}
 		if (!check.isEmpty()) {
-			Iterables.removeIf(recipeWrappers, w -> check.contains(w.getIn().getItem().getRegistryName().getResourceDomain()));
+			recipeWrappers.removeIf(w -> check.contains(w.getIn().getItem().getRegistryName().getResourceDomain()));
 			recipeWrappers.addAll(Lists.newArrayList(getRecipes(check)));
 		}
 		recipeWrappers.removeIf(rw -> rw.getIn().isEmpty());
@@ -155,8 +158,6 @@ public class BlockDrops {
 		List<Wrapper> res = Lists.newArrayList();
 		Set<IBlockState> stateSet = Sets.newHashSet();
 		for (Block b : ForgeRegistries.BLOCKS) {
-			//			if (!all && !mods.contains(r.getResourceDomain()))
-			//				continue;
 			if (!ids.contains(b.getRegistryName().getResourceDomain()) || Item.getItemFromBlock(b) == null || b == Blocks.BEDROCK)
 				continue;
 			NonNullList<ItemStack> lis = NonNullList.create();
@@ -183,31 +184,33 @@ public class BlockDrops {
 
 		ProgressManager.ProgressBar bar = ProgressManager.push("Analysing Drops", states.size());
 		ExecutorService threadPool = Executors.newCachedThreadPool(); // Pool to store all threads
-		List<Future<?>> runningBlockThreads = new ArrayList<>(); // List for all threads, used to sync up later
-		for (IBlockState st : states) {
-			Future<?> future = threadPool.submit(() -> {
-				List<Drop> drops;
-				bar.step(st.getBlock().getRegistryName().toString());
-				try {
-					drops = getList(st);
-				} catch (Throwable e) {
-					BlockDrops.logger.error("An error occured while calculating drops for " + st.getBlock().getLocalizedName() + " (" + e.getClass() + ")");
-					drops = Collections.emptyList();
-				}
-				if (drops.isEmpty())
-					return;
-				res.add(new Wrapper(getStack(st), drops));
-			});
-			runningBlockThreads.add(future); // Add thread to sync list
-		}
-		try {
-			for (Future<?> thread : runningBlockThreads) {
-				thread.get(); // Sync all threads back to this thread
+		Consumer<IBlockState> task = (st) -> {
+			List<Drop> drops;
+			bar.step(st.getBlock().getRegistryName().toString());
+			try {
+				drops = getList(st);
+			} catch (Throwable e) {
+				BlockDrops.logger.error("An error occured while calculating drops for " + st.getBlock().getLocalizedName() + " (" + e.getClass() + ")");
+				drops = Collections.emptyList();
 			}
-		} catch (InterruptedException | ExecutionException ex) {
-			ex.printStackTrace();
+			if (drops.isEmpty())
+				return;
+			res.add(new Wrapper(getStack(st), drops));
+		};
+		for (IBlockState st : states) {
+			if (multithreaded) {
+				threadPool.execute(() -> task.accept(st));
+			} else
+				task.accept(st);
 		}
 		threadPool.shutdown();
+		try {
+			threadPool.awaitTermination(1, TimeUnit.HOURS);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		if (bar.getSteps() != bar.getStep())
+			ReflectionHelper.setPrivateValue(ProgressBar.class, bar, bar.getSteps(), "step");
 		ProgressManager.pop(bar);
 		return res;
 
