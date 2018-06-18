@@ -11,7 +11,6 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -19,13 +18,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.logging.log4j.Logger;
 import org.lwjgl.input.Keyboard;
 
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -43,7 +40,6 @@ import mrriegel.blockdrops.util.WrapperJson;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
-import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.NonNullList;
@@ -80,10 +76,8 @@ public class BlockDrops {
 
 	public static List<Wrapper> recipeWrappers;
 	public static Gson gson;
-	public static Logger logger;
 
-	private File recipeWrapFile;
-	private File modHashFile;
+	private File recipeWrapFile, modHashFile;
 
 	@EventHandler
 	public void preInit(FMLPreInitializationEvent event) {
@@ -101,7 +95,6 @@ public class BlockDrops {
 		if (config.hasChanged())
 			config.save();
 		gson = new GsonBuilder().setPrettyPrinting().registerTypeAdapter(Wrapper.class, new WrapperJson()).create();
-		logger = event.getModLog();
 	}
 
 	@EventHandler
@@ -117,7 +110,7 @@ public class BlockDrops {
 			modHashFile.createNewFile();
 		}
 		Map<String, String> mods = Maps.newHashMap();
-		Loader.instance().getActiveModList().stream().forEach(m -> mods.put(m.getModId(), m.getVersion()));
+		Loader.instance().getActiveModList().forEach(m -> mods.put(m.getModId(), m.getVersion()));
 		for (String black : blacklist)
 			mods.remove(black);
 		Map<String, String> fileMods = null;
@@ -158,7 +151,7 @@ public class BlockDrops {
 		List<Wrapper> res = Lists.newArrayList();
 		Set<IBlockState> stateSet = Sets.newHashSet();
 		for (Block b : ForgeRegistries.BLOCKS) {
-			if (!ids.contains(b.getRegistryName().getResourceDomain()) || Item.getItemFromBlock(b) == null || b == Blocks.BEDROCK)
+			if (!ids.contains(b.getRegistryName().getResourceDomain()) || Item.getItemFromBlock(b) == null)
 				continue;
 			NonNullList<ItemStack> lis = NonNullList.create();
 			b.getSubBlocks(b.getCreativeTabToDisplayOn(), lis);
@@ -190,7 +183,7 @@ public class BlockDrops {
 			try {
 				drops = getList(st);
 			} catch (Throwable e) {
-				BlockDrops.logger.error("An error occured while calculating drops for " + st.getBlock().getLocalizedName() + " (" + e.getClass() + ")");
+				//				BlockDrops.logger.error("An error occured while calculating drops for " + st.getBlock().getLocalizedName() + " (" + e.getClass() + ")");
 				drops = Collections.emptyList();
 			}
 			if (drops.isEmpty())
@@ -233,8 +226,7 @@ public class BlockDrops {
 					} catch (Throwable t) {
 						crashed = true;
 					}
-				lis.removeAll(Collections.singleton(null));
-				Iterables.removeIf(lis, s -> s.isEmpty());
+				lis.removeIf(ItemStack::isEmpty);
 				switch (j) {
 				case 0:
 					add(pairs0, lis);
@@ -250,8 +242,6 @@ public class BlockDrops {
 					break;
 				}
 				for (ItemStack s : lis) {
-					if (s.isEmpty())
-						continue;
 					switch (j) {
 					case 0:
 						add(stacks0, s);
@@ -281,12 +271,7 @@ public class BlockDrops {
 			add(stacks, w.stack);
 
 		if (!BlockDrops.all) {
-			Iterator<StackWrapper> it = stacks.iterator();
-			while (it.hasNext()) {
-				StackWrapper tmp = it.next();
-				if (tmp.stack.isItemEqual(getStack(state)))
-					it.remove();
-			}
+			stacks.removeIf(tmp -> tmp.stack.isItemEqual(getStack(state)));
 		}
 		stacks.sort((o1, o2) -> {
 			int id = Integer.compare(Item.getIdFromItem(o1.stack.getItem()), Item.getIdFromItem(o2.stack.getItem()));
@@ -300,7 +285,7 @@ public class BlockDrops {
 			float s1 = getChance(stacks1, stack.stack);
 			float s2 = getChance(stacks2, stack.stack);
 			float s3 = getChance(stacks3, stack.stack);
-			if (stack.stack != null && stack.stack.getItem() != null)
+			if (!stack.stack.isEmpty())
 				drops.add(new Drop(stack.stack, s0, s1, s2, s3, pairs0.get(stack), pairs1.get(stack), pairs2.get(stack), pairs3.get(stack)));
 		}
 		return drops;
@@ -324,10 +309,6 @@ public class BlockDrops {
 	}
 
 	private static void add(List<StackWrapper> lis, ItemStack stack) {
-		if (lis == null)
-			lis = Lists.newArrayList();
-		if (stack == null || stack.getItem() == null)
-			return;
 		int con = contains(lis, stack);
 		if (con == -1)
 			lis.add(new StackWrapper(stack, stack.getCount()));
@@ -339,8 +320,6 @@ public class BlockDrops {
 	}
 
 	private static void add(Map<StackWrapper, Pair<Integer, Integer>> map, List<ItemStack> lis) {
-		if (map == null)
-			map = Maps.newHashMap();
 		List<StackWrapper> list = Lists.newArrayList();
 		for (ItemStack s : lis)
 			add(list, s);
@@ -361,28 +340,30 @@ public class BlockDrops {
 	private static Field recipeLayouts, recipeWrapper;
 
 	@SubscribeEvent
-	public static void key(KeyboardInputEvent.Post event) throws IllegalArgumentException, IllegalAccessException {
-		if (Minecraft.getMinecraft().currentScreen instanceof RecipesGui) {
+	public static void key(KeyboardInputEvent.Post event) throws IllegalAccessException {
+		if (Minecraft.getMinecraft().currentScreen instanceof RecipesGui && Keyboard.getEventKeyState()) {
 			if (recipeLayouts == null) {
 				recipeLayouts = ReflectionHelper.findField(RecipesGui.class, "recipeLayouts");
 				recipeWrapper = ReflectionHelper.findField(RecipeLayout.class, "recipeWrapper");
 			}
+			MutableBoolean change = new MutableBoolean(false);
 			((List<RecipeLayout>) recipeLayouts.get(Minecraft.getMinecraft().currentScreen)).stream().map(rl -> {
 				try {
 					return recipeWrapper.get(rl);
 				} catch (IllegalArgumentException | IllegalAccessException e) {
-					e.printStackTrace();
 					return null;
 				}
-			}).filter(o -> o instanceof Wrapper).map(o -> (Wrapper) o).collect(Collectors.toList()).forEach(w -> {
+			}).filter(o -> o instanceof Wrapper).map(o -> (Wrapper) o)/*.collect(Collectors.toList())*/.forEach(w -> {
 				if (Keyboard.isKeyDown(Keyboard.KEY_LEFT)) {
 					w.decreaseIndex();
-					((RecipesGui) Minecraft.getMinecraft().currentScreen).onStateChange();
+					change.setTrue();
 				} else if (Keyboard.isKeyDown(Keyboard.KEY_RIGHT)) {
 					w.increaseIndex();
-					((RecipesGui) Minecraft.getMinecraft().currentScreen).onStateChange();
+					change.setTrue();
 				}
 			});
+			if (change.isTrue())
+				((RecipesGui) Minecraft.getMinecraft().currentScreen).onStateChange();
 		}
 	}
 

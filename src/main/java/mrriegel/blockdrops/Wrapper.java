@@ -3,6 +3,7 @@ package mrriegel.blockdrops;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -82,13 +83,15 @@ public class Wrapper implements IRecipeWrapper, ITooltipCallback<ItemStack> {
 	@Override
 	public void onTooltip(int slotIndex, boolean input, ItemStack ingredient, List<String> tooltip) {
 		if (!input) {
-			long x = (System.currentTimeMillis() / 1500l) % 4;
-			String chance = BlockDrops.showChance ? String.format("%.2f", chance(ingredient, (int) x)) + " %  " : "";
-			String minmax = BlockDrops.showMinMax ? "Min: " + pair(ingredient, (int) x).getLeft() + "  Max: " + pair(ingredient, (int) x).getRight() : "";
-			if (BlockDrops.showChance || BlockDrops.showMinMax)
-				tooltip.add(TextFormatting.BLUE + "Fortune " + (0l != x ? I18n.format("enchantment.level." + x) : 0) + " " + TextFormatting.GRAY + chance + minmax);
+			boolean one = IntStream.range(0, 4).mapToObj(i -> Float.floatToIntBits(chance(ingredient, i))).distinct().count() == 1;
+			for (int x = 0; x < (one ? 1 : 4); x++) {
+				String chance = BlockDrops.showChance ? String.format("%.2f", chance(ingredient, (int) x)) + " %  " : "";
+				String minmax = BlockDrops.showMinMax ? "Min: " + pair(ingredient, (int) x).getLeft() + "  Max: " + pair(ingredient, (int) x).getRight() : "";
+				if (BlockDrops.showChance || BlockDrops.showMinMax)
+					tooltip.add((one ? "" : TextFormatting.BLUE + "Fortune " + (0l != x ? I18n.format("enchantment.level." + x) : 0) + " ") + TextFormatting.GRAY + chance + minmax);
+			}
 			if (out.size() > 9)
-				tooltip.add(TextFormatting.GRAY + "There are too many possible drops. Use left and right key to cycle.");
+				tooltip.add(TextFormatting.RED + "There are too many possible drops. Use left and right key to cycle.");
 		}
 	}
 
