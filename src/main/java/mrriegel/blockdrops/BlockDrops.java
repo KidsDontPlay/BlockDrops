@@ -218,8 +218,7 @@ public class BlockDrops {
 		boolean crashed = false;
 		for (int i = 0; i < BlockDrops.iteration; i++) {
 			for (int j = 0; j < 4; j++) {
-				List<ItemStack> list = state.getBlock().getDrops(FakeClientWorld.getInstance(), BlockPos.ORIGIN, state, j);
-				List<ItemStack> lis = Lists.newArrayList(list);
+				List<ItemStack> lis = Lists.newArrayList(state.getBlock().getDrops(FakeClientWorld.getInstance(), BlockPos.ORIGIN, state, j));
 				if (!crashed)
 					try {
 						net.minecraftforge.event.ForgeEventFactory.fireBlockHarvesting(lis, FakeClientWorld.getInstance(), BlockPos.ORIGIN, state, j, 1f, false, FakeClientPlayer.getInstance());
