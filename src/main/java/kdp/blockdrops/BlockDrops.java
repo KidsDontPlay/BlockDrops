@@ -61,7 +61,7 @@ public class BlockDrops {
     public static final Logger LOG = LogManager.getLogger(BlockDrops.class);
     public static final ResourceLocation RL = new ResourceLocation(MOD_ID, "drops");
 
-    private static ForgeConfigSpec.BooleanValue all, showChance, showMinMax, multithreaded;
+    public static ForgeConfigSpec.BooleanValue all, showChance, showMinMax, multithreaded;
     private static ForgeConfigSpec.IntValue iterations;
     private static ForgeConfigSpec.ConfigValue<List<String>> blacklistedMods;
 
@@ -212,12 +212,11 @@ public class BlockDrops {
 
     @SubscribeEvent
     public void serverStart(FMLServerStartingEvent event) {
+        if(true)return;
         List<DropRecipe> allRecipes = getAllRecipes(
                 ModList.get().getMods().stream().map(ModInfo::getModId).filter(s -> !blacklistedMods.get().contains(s))
                         .collect(Collectors.toSet()), event);
         allRecipes.forEach(System.out::println);
-        allRecipes.hashCode();
-
     }
 
 }

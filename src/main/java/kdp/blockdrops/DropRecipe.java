@@ -3,17 +3,25 @@ package kdp.blockdrops;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
+
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.ListNBT;
+import net.minecraft.util.math.MathHelper;
 import net.minecraftforge.common.util.INBTSerializable;
 
 public class DropRecipe implements INBTSerializable<CompoundNBT> {
 
     private ItemStack in;
     private List<Drop> drops;
+    private Cache<ItemStack, Drop> cache = CacheBuilder.newBuilder().build();
+    //client only
+    private int index, maxIndex;
 
     public DropRecipe(ItemStack in, List<Drop> drops) {
         this.in = in;
@@ -39,6 +47,27 @@ public class DropRecipe implements INBTSerializable<CompoundNBT> {
         this.drops = drops;
     }
 
+    public Drop getDropForItem(ItemStack stack) {
+        try {
+            return cache.get(stack,
+                    () -> drops.stream().filter(drop -> drop.getOut().isItemEqual(stack)).findFirst().get());
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public int getIndex() {
+        return this.index;
+    }
+
+    public void increaseIndex() {
+        this.index = MathHelper.clamp(index + 1, 0, maxIndex);
+    }
+
+    public void decreaseIndex() {
+        this.index = MathHelper.clamp(index - 1, 0, maxIndex);
+    }
+
     @Override
     public CompoundNBT serializeNBT() {
         CompoundNBT nbt = new CompoundNBT();
@@ -58,5 +87,6 @@ public class DropRecipe implements INBTSerializable<CompoundNBT> {
             d.deserializeNBT((CompoundNBT) n);
             drops.add(d);
         });
+        maxIndex = Math.max(0, drops.size() - 9);
     }
 }
