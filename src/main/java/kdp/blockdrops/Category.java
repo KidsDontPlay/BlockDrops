@@ -1,14 +1,23 @@
 package kdp.blockdrops;
 
+import java.text.DecimalFormat;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.text.TextFormatting;
+import net.minecraftforge.fml.client.config.GuiButtonExt;
 import net.minecraftforge.fml.client.config.GuiUtils;
 
+import org.apache.commons.lang3.tuple.Pair;
+import org.lwjgl.glfw.GLFW;
+
+import mezz.jei.Internal;
 import mezz.jei.api.constants.VanillaTypes;
 import mezz.jei.api.gui.IRecipeLayout;
 import mezz.jei.api.gui.drawable.IDrawable;
@@ -20,6 +29,8 @@ import mezz.jei.gui.recipes.IRecipeLogicStateListener;
 
 public class Category implements IRecipeCategory<DropRecipe> {
     private static final ResourceLocation hopper = new ResourceLocation("textures/gui/container/hopper.png");
+    private static final DecimalFormat format = new DecimalFormat("#.##");
+    private final Map<DropRecipe, Pair<Button, Button>> buttonMap = new IdentityHashMap<>();
 
     @Override
     public ResourceLocation getUid() {
@@ -51,6 +62,15 @@ public class Category implements IRecipeCategory<DropRecipe> {
         drawSlot(81, 1);
         for (int i = 9; i < 170; i += 18)
             drawSlot(i, 20);
+        Pair<Button, Button> pair = buttonMap.get(recipe);
+        if (pair == null) {
+            pair = Pair.of(new Button(0, 23, ""), new Button(172, 23, ""));
+            buttonMap.put(recipe, pair);
+        }
+        pair.getLeft().visible = recipe.getIndex() > 0;
+        pair.getRight().visible = recipe.getIndex() < recipe.getMaxIndex();
+        pair.getLeft().renderButton((int) mouseX, (int) mouseY, 0);
+        pair.getRight().renderButton((int) mouseX, (int) mouseY, 0);
     }
 
     private void drawSlot(int x, int y) {
@@ -69,13 +89,17 @@ public class Category implements IRecipeCategory<DropRecipe> {
         IGuiItemStackGroup stackGroup = recipeLayout.getItemStacks();
         stackGroup.init(0, true, 81, 1);
         stackGroup.set(0, recipe.getInputs());
+        for (int i = 0; i < Math.min(recipe.getOutputs().size(), 9); i++) {
+            stackGroup.init(i + 1, false, 9 + i * 18, 20);
+            stackGroup.set(i + 1, recipe.getOutputs().get((i + recipe.getIndex())));
+        }
         stackGroup.addTooltipCallback((int slotIndex, boolean input, ItemStack ingredient, List<String> tooltip) -> {
             if (!input) {
                 Drop d = recipe.getDropForItem(ingredient);
                 boolean one = d.getChances().values().stream().distinct().count() == 1;
                 for (int x = 0; x < (one ? 1 : 4); x++) {
                     String chance = BlockDrops.showChance.get() ?
-                            String.format("%.2f", d.getChances().get(x) * 100F) + " %  " :
+                            format.format(d.getChances().get(x) * 100F) + " %  " :
                             "";
                     String minmax = BlockDrops.showMinMax.get() ?
                             "Min: " + d.getMins().get(x) + " Max: " + d.getMaxs().get(x) :
@@ -88,22 +112,51 @@ public class Category implements IRecipeCategory<DropRecipe> {
                                         0) + " ") + TextFormatting.GRAY + chance + minmax);
                     }
                 }
-                if (recipe.getOutputs().size() > 9) {
-                    tooltip.add(
-                            TextFormatting.RED + "There are too many possible drops. Use left and right key to cycle.");
-                }
             }
         });
-        for (int i = 0; i < Math.min(recipe.getOutputs().size(), 9); i++) {
-            stackGroup.init(i + 1, false, 9 + i * 18, 20);
-            stackGroup.set(i + 1, recipe.getOutputs().get((i + recipe.getIndex())));
-        }
     }
 
     @Override
     public boolean handleClick(DropRecipe recipe, double mouseX, double mouseY, int mouseButton) {
-        System.out.println(mouseX + " " + mouseY);
-        ((IRecipeLogicStateListener) Minecraft.getInstance().currentScreen).onStateChange();
+        Pair<Button, Button> pair = buttonMap.get(recipe);
+        if (pair != null//
+                && (pair.getLeft().isHovered()//
+                || pair.getRight().isHovered())//
+                && mouseButton == GLFW.GLFW_MOUSE_BUTTON_1) {
+            if (pair.getLeft().isHovered()) {
+                recipe.decreaseIndex();
+            } else {
+                recipe.increaseIndex();
+            }
+            Minecraft.getInstance().enqueue(() ->//
+                    ((IRecipeLogicStateListener) Minecraft.getInstance().currentScreen).onStateChange());
+            return true;
+        }
         return false;
+    }
+
+    private static class Button extends GuiButtonExt {
+
+        Button(int xPos, int yPos, String displayString) {
+            super(xPos, yPos, 8, 12, displayString, null);
+        }
+
+        @Override
+        public boolean isHovered() {
+            return super.isHovered() && visible;
+        }
+
+        @Override
+        public void renderButton(int mouseX, int mouseY, float partial) {
+            super.renderButton(mouseX, mouseY, partial);
+            if (visible) {
+                boolean left = this.x == 0;
+                if (left) {
+                    Internal.getTextures().getArrowPrevious().draw(0, 24);
+                } else {
+                    Internal.getTextures().getArrowNext().draw(171, 24);
+                }
+            }
+        }
     }
 }

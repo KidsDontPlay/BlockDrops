@@ -26,6 +26,7 @@ public class DropRecipe implements INBTSerializable<CompoundNBT> {
     public DropRecipe(ItemStack in, List<Drop> drops) {
         this.in = in;
         this.drops = drops;
+        this.maxIndex = Math.max(0, drops.size() - 9);
     }
 
     public DropRecipe() {
@@ -45,6 +46,7 @@ public class DropRecipe implements INBTSerializable<CompoundNBT> {
 
     public void setDrops(List<Drop> drops) {
         this.drops = drops;
+        this.maxIndex = Math.max(0, drops.size() - 9);
     }
 
     public Drop getDropForItem(ItemStack stack) {
@@ -58,6 +60,10 @@ public class DropRecipe implements INBTSerializable<CompoundNBT> {
 
     public int getIndex() {
         return this.index;
+    }
+
+    public int getMaxIndex() {
+        return maxIndex;
     }
 
     public void increaseIndex() {

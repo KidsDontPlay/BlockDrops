@@ -1,5 +1,9 @@
 package kdp.blockdrops;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -8,23 +12,34 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import com.google.common.collect.ImmutableList;
+import com.google.common.base.Stopwatch;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import com.mojang.authlib.GameProfile;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
 import net.minecraft.enchantment.Enchantments;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.inventory.EquipmentSlotType;
+import net.minecraft.item.BlockItem;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.nbt.JsonToNBT;
+import net.minecraft.nbt.ListNBT;
+import net.minecraft.profiler.Profiler;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.NonNullList;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
 import net.minecraft.world.dimension.DimensionType;
 import net.minecraft.world.server.ServerWorld;
 import net.minecraft.world.storage.loot.LootContext;
@@ -32,7 +47,7 @@ import net.minecraft.world.storage.loot.LootParameters;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.util.FakePlayerFactory;
-import net.minecraftforge.event.ForgeEventFactory;
+import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.ModLoadingContext;
@@ -41,8 +56,14 @@ import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.server.FMLServerStartingEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.fml.loading.moddiscovery.ModInfo;
+import net.minecraftforge.fml.network.NetworkRegistry;
+import net.minecraftforge.fml.network.PacketDistributor;
+import net.minecraftforge.fml.network.event.EventNetworkChannel;
+import net.minecraftforge.fml.network.simple.SimpleChannel;
 import net.minecraftforge.registries.ForgeRegistries;
 
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Validate;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -51,6 +72,8 @@ import org.apache.logging.log4j.Logger;
 import it.unimi.dsi.fastutil.Hash;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenCustomHashMap;
+import it.unimi.dsi.fastutil.objects.Object2LongMap;
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenCustomHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenCustomHashSet;
 
@@ -79,13 +102,24 @@ public class BlockDrops {
         }
     };
 
+    private static Path recipesPath;
+
+    private static final String VERSION = "1.0";
+    private static SimpleChannel simpleChannel = NetworkRegistry
+            .newSimpleChannel(new ResourceLocation(MOD_ID, "ch1"), () -> VERSION, VERSION::equals, VERSION::equals);
+    private static EventNetworkChannel eventNetworkChannel = NetworkRegistry
+            .newEventChannel(new ResourceLocation(MOD_ID, "ev"), () -> VERSION, VERSION::equals, VERSION::equals);
+
+    private static List<DropRecipe> recipes = Collections.emptyList();
+    private static Profiler profiler = new Profiler(System.nanoTime(), () -> 0);
+
     public BlockDrops() {
         Pair<Object, ForgeConfigSpec> pairCommon = new ForgeConfigSpec.Builder().configure(b -> {
             all = b.comment("Show block drops of any block").define("allBlocks", false);
-            multithreaded = b.comment("Multithreaded calculation of drops").define("multithreaded", true);
+            //multithreaded = b.comment("Multithreaded calculation of drops").define("multithreaded", true);
             iterations = b
                     .comment("Amount of calculation iterations. The higher the more precise the calculation results")
-                    .defineInRange("iterations", 4000, 1, 50000);
+                    .defineInRange("iterations", 3000, 500, 20000);
             blacklistedMods = b.comment("Mod IDs of mods that won't be scanned").define("blacklistedMods",
                     Arrays.asList("flatcoloredblocks", "chisel", "xtones", "wallpapercraft", "sonarcore",
                             "microblockcbe"));
@@ -100,26 +134,69 @@ public class BlockDrops {
         ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, pairClient.getValue());
         MinecraftForge.EVENT_BUS.register(this);
         FMLJavaModLoadingContext.get().getModEventBus().register(this);
+        recipesPath = Paths.get("config", MOD_ID + ".txt");
+        simpleChannel.registerMessage(0, SyncMessage.class, (m, pb) -> {
+            ListNBT listNBT = new ListNBT();
+            m.recipes.forEach(recipe -> listNBT.add(recipe.serializeNBT()));
+            CompoundNBT tag = new CompoundNBT();
+            tag.put("list", listNBT);
+            pb.writeCompoundTag(tag);
+        }, pb -> {
+            SyncMessage m = new SyncMessage();
+            ListNBT listNBT = (ListNBT) pb.readCompoundTag().get("list");
+            m.recipes = listNBT.stream().map(n -> {
+                DropRecipe r = new DropRecipe();
+                r.deserializeNBT((CompoundNBT) n);
+                return r;
+            }).collect(Collectors.toList());
+            return m;
+        }, (m, s) -> {
+            s.get().enqueueWork(() -> Plugin.recipes = m.recipes);
+        });
+        //eventNetworkChannel.
     }
 
     public static List<DropRecipe> getAllRecipes(Set<String> allowedIDs, FMLServerStartingEvent event) {
+        profiler.startTick();
         List<DropRecipe> result = new ArrayList<>();
         ServerWorld world = event.getServer().getWorld(DimensionType.OVERWORLD);
+        Validate.isTrue(
+                Lists.newArrayList(ForgeRegistries.BLOCKS).size() == Sets.newHashSet(ForgeRegistries.BLOCKS).size());
+        Object2LongOpenHashMap<Block> cbl = new Object2LongOpenHashMap();
+        Object2LongOpenHashMap<BlockState> cbs = new Object2LongOpenHashMap();
         for (Block block : ForgeRegistries.BLOCKS) {
             if (allowedIDs.contains(block.getRegistryName().getNamespace())) {
-                ImmutableList<BlockState> validStates = block.getStateContainer().getValidStates();
+                Stopwatch sw1 = Stopwatch.createStarted();
+                List<BlockState> validStates = block.getStateContainer().getValidStates();
+                if (validStates.size() > 20) {
+                    validStates = Collections.singletonList(block.getDefaultState());
+                }
                 Set<String> dropStrings = new HashSet<>();
+                if (block == Blocks.RED_MUSHROOM) {
+                    block.hashCode();
+                }
                 for (BlockState state : validStates) {
+                    Stopwatch sw2 = Stopwatch.createStarted();
                     List<Drop> drops = getDrops(state, event);
                     String ds = drops.toString();
                     if (drops.isEmpty() || dropStrings.contains(ds)) {
                         continue;
                     }
                     dropStrings.add(ds);
-                    result.add(new DropRecipe(state.getBlock().getItem(world, BlockPos.ZERO, state), drops));
+                    result.add(new DropRecipe(getItemForBlock(state, world), drops));
+                    cbs.addTo(state, sw2.elapsed(TimeUnit.MICROSECONDS));
+                    System.out.println("Added drop for " + state);
                 }
+                cbl.addTo(block, sw1.elapsed(TimeUnit.MICROSECONDS));
             }
         }
+        profiler.endTick();
+        System.out.println(profiler.getResults().format());
+        System.out.println(StringUtils.repeat("#", 100));
+        cbl.object2LongEntrySet().stream().sorted(Comparator.comparingLong(Object2LongMap.Entry::getLongValue))
+                .forEach(System.out::println);
+        cbs.object2LongEntrySet().stream().sorted(Comparator.comparingLong(Object2LongMap.Entry::getLongValue))
+                .forEach(System.out::println);
         return result;
     }
 
@@ -128,7 +205,12 @@ public class BlockDrops {
             List<Drop> result = new ArrayList<>();
             ServerWorld world = event.getServer().getWorld(DimensionType.OVERWORLD);
             ServerPlayerEntity player = FakePlayerFactory.get(world, new GameProfile(uuid, "Hacker"));
-            ItemStack show = state.getBlock().getItem(world, BlockPos.ZERO, state);
+            ItemStack show;
+            try {
+                show = getItemForBlock(state, world);
+            } catch (RuntimeException e) {
+                return result;
+            }
             if (show.isEmpty()) {
                 return result;
             }
@@ -137,6 +219,7 @@ public class BlockDrops {
             Int2ObjectOpenHashMap<Object2IntOpenCustomHashMap<ItemStack>> resultMap = new Int2ObjectOpenHashMap<>();
             Int2ObjectOpenHashMap<Object2ObjectOpenCustomHashMap<ItemStack, MutablePair<Integer, Integer>>> minmaxs = new Int2ObjectOpenHashMap<>();
             for (int fortune = 0; fortune < 4; fortune++) {
+                //profiler.startSection("a");
                 ItemStack tool = new ItemStack(Items.DIAMOND_PICKAXE);
                 if (fortune > 0) {
                     tool.addEnchantment(Enchantments.FORTUNE, fortune);
@@ -145,6 +228,9 @@ public class BlockDrops {
                 try {
                     tile = state.createTileEntity(world);
                 } catch (Exception e) {
+                }
+                if (state.getBlock() == Blocks.COAL_ORE && fortune == 3) {
+                    System.out.println(false);
                 }
                 player.setItemStackToSlot(EquipmentSlotType.MAINHAND, tool);
                 LootContext.Builder builder = new LootContext.Builder(world)//
@@ -156,67 +242,116 @@ public class BlockDrops {
                 Object2IntOpenCustomHashMap<ItemStack> stacks = new Object2IntOpenCustomHashMap<>(strategy);
                 Object2ObjectOpenCustomHashMap<ItemStack, MutablePair<Integer, Integer>> minmax = new Object2ObjectOpenCustomHashMap<>(
                         strategy);
+                minmax.defaultReturnValue(MutablePair.of(9999, 0));
+                //profiler.endStartSection("a");
+                //profiler.startSection("b");
                 for (int i = 0; i < iteration; i++) {
                     NonNullList<ItemStack> drops = NonNullList.create();
+                    if (state.getBlock() == Blocks.POTATOES) {
+                        stacks.hashCode();
+                    }
                     drops.addAll(state.getDrops(builder));
                     if (!eventCrashed) {
                         try {
+                            /*TODO enable
                             ForgeEventFactory
                                     .fireBlockHarvesting(drops, world, BlockPos.ZERO, state, fortune, 1F, false,
-                                            player);
+                                            player);*/
                         } catch (Exception e) {
                             eventCrashed = true;
                         }
                     }
                     drops.removeIf(ItemStack::isEmpty);
                     for (ItemStack drop : drops) {
-                        if (all.get() || drop.getItem() != show.getItem()) {
+                        if (all.get() || drop.getItem() != show.getItem() || !(show.getItem() instanceof BlockItem)) {
                             stacks.addTo(drop, drop.getCount());
                         }
-                        /*minmax.compute(drop, (s, p) -> {
-                            if (p == null) {
-                                return MutablePair.of(drop.getCount(), drop.getCount());
-                            }
-                            p.setLeft(Math.min(drop.getCount(), p.getLeft()));
-                            p.setRight(Math.max(drop.getCount(), p.getRight()));
-                            return p;
-                        });*/
                         minmax.merge(drop, MutablePair.of(drop.getCount(), drop.getCount()), (pOld, pNew) -> {
                             pOld.setLeft(Math.min(pNew.getLeft(), pOld.getLeft()));
-                            pOld.setRight(Math.max(pNew.getRight(), pOld.getLeft()));
+                            pOld.setRight(Math.max(pNew.getRight(), pOld.getRight()));
                             return pOld;
                         });
                     }
                 }
                 minmaxs.put(fortune, minmax);
                 resultMap.put(fortune, stacks);
+                //profiler.endStartSection("b");
             }
+            //profiler.startSection("c");
             ObjectOpenCustomHashSet<ItemStack> allStacks = new ObjectOpenCustomHashSet<>(strategy);
             resultMap.values().forEach(map -> allStacks.addAll(map.keySet()));
             allStacks.stream()//
                     .sorted(Comparator.comparingInt(s -> Item.getIdFromItem(s.getItem())))//
                     .forEach(s -> {
                         Drop drop = new Drop(s);
-                        for (int i = 0; i < 4; i++) {
-                            drop.getChances().put(i, resultMap.get(i).getInt(s) / (float) iteration);
-                            drop.getMaxs().put(i, minmaxs.get(i).get(s).getRight().intValue());
-                            drop.getMins().put(i, minmaxs.get(i).get(s).getLeft().intValue());
+                        if (state.getBlock() == Blocks.OAK_LEAVES) {
+                            state.hashCode();
+                        }
+                        for (int fortune = 0; fortune < 4; fortune++) {
+                            drop.getChances().put(fortune, resultMap.get(fortune).getInt(s) / (float) iteration);
+                            drop.getMaxs().put(fortune, minmaxs.get(fortune).get(s).getRight().intValue());
+                            drop.getMins().put(fortune, minmaxs.get(fortune).get(s).getLeft().intValue());
                         }
                         result.add(drop);
                     });
+            //profiler.endStartSection("c");
             return result;
         } catch (Exception e) {
+            //profiler.endSection();
+            LOG.info("Error ({}:{}) while calculating drops for {}", e.getClass().getSimpleName(), e.getMessage(),
+                    state);
+            if (!true)
+                throw new RuntimeException(e);
             return Collections.emptyList();
         }
     }
 
+    private static ItemStack getItemForBlock(BlockState state, World world) {
+        ItemStack item = new ItemStack(state.getBlock().asItem());
+        if (item == null) {
+            item = state.getBlock().getItem(world, BlockPos.ZERO, state);
+        }
+        return item;
+    }
+
     @SubscribeEvent
-    public void serverStart(FMLServerStartingEvent event) {
-        if(true)return;
-        List<DropRecipe> allRecipes = getAllRecipes(
-                ModList.get().getMods().stream().map(ModInfo::getModId).filter(s -> !blacklistedMods.get().contains(s))
-                        .collect(Collectors.toSet()), event);
-        allRecipes.forEach(System.out::println);
+    public void serverStart(FMLServerStartingEvent event) throws IOException, CommandSyntaxException {
+        List<DropRecipe> allRecipes;
+        int hash = ModList.get().getMods().stream()
+                .mapToInt(mi -> mi.getModId().hashCode() ^ mi.getVersion().hashCode()).sum();
+        List<String> strings = null;
+        boolean calculate = Files.notExists(recipesPath);
+        if (!calculate) {
+            strings = Files.readAllLines(recipesPath);
+            String stringHash = strings.get(0);
+            if (Integer.parseInt(stringHash) != hash) {
+                calculate = true;
+            }
+        }
+        if (calculate) {
+            allRecipes = getAllRecipes(ModList.get().getMods().stream().map(ModInfo::getModId)
+                    .filter(s -> !blacklistedMods.get().contains(s)).collect(Collectors.toSet()), event);
+            List<String> nbts = allRecipes.stream().map(DropRecipe::serializeNBT).map(Object::toString)
+                    .collect(Collectors.toList());
+            nbts.add(0, hash + "");
+            Files.write(recipesPath, nbts);
+        } else {
+            allRecipes = new ArrayList<>();
+            for (int i = 1; i < strings.size(); i++) {
+                DropRecipe dropRecipe = new DropRecipe();
+                dropRecipe.deserializeNBT(JsonToNBT.getTagFromJson(strings.get(i)));
+                allRecipes.add(dropRecipe);
+            }
+        }
+        recipes = allRecipes;
+    }
+
+    @SubscribeEvent
+    public void join(EntityJoinWorldEvent event) {
+        if (event.getEntity() instanceof ServerPlayerEntity) {
+            simpleChannel.send(PacketDistributor.PLAYER.with(() -> (ServerPlayerEntity) event.getEntity()),
+                    new SyncMessage(recipes));
+        }
     }
 
 }

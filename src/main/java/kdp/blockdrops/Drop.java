@@ -6,6 +6,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.IntArrayNBT;
 import net.minecraftforge.common.util.INBTSerializable;
+import net.minecraftforge.items.ItemHandlerHelper;
 
 import it.unimi.dsi.fastutil.ints.Int2FloatLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntLinkedOpenHashMap;
@@ -17,7 +18,7 @@ public class Drop implements INBTSerializable<CompoundNBT> {
     private final Int2IntLinkedOpenHashMap maxs = new Int2IntLinkedOpenHashMap();
 
     public Drop(ItemStack out) {
-        this.out = out;
+        this.out = ItemHandlerHelper.copyStackWithSize(out, 1);
     }
 
     Drop() {
