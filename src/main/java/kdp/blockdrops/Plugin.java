@@ -31,7 +31,9 @@ public class Plugin implements IModPlugin {
 
     @Override
     public void registerRecipes(IRecipeRegistration registration) {
-        registration.addRecipes(recipes, BlockDrops.RL);
+        if (recipes != null) {
+            registration.addRecipes(recipes, BlockDrops.RL);
+        }
     }
 
     @Override
