@@ -78,7 +78,7 @@ public class BlockDrops {
     public static final Logger LOG = LogManager.getLogger(BlockDrops.class);
     public static final ResourceLocation RL = new ResourceLocation(MOD_ID, "drops");
 
-    public static ForgeConfigSpec.BooleanValue all, showChance, showMinMax, multithreaded, allStates;
+    public static ForgeConfigSpec.BooleanValue all, showChance, showMinMax, allStates;
     private static ForgeConfigSpec.IntValue iterations;
     private static ForgeConfigSpec.ConfigValue<List<String>> blacklistedMods;
 
@@ -107,14 +107,13 @@ public class BlockDrops {
     public BlockDrops() {
         Pair<Object, ForgeConfigSpec> pairCommon = new ForgeConfigSpec.Builder().configure(b -> {
             all = b.comment("Show block drops of any block").define("allBlocks", false);
-            //multithreaded = b.comment("Multithreaded calculation of drops").define("multithreaded", true);
             iterations = b
                     .comment("Amount of calculation iterations. The higher the more precise the calculation results")
                     .defineInRange("iterations", 4000, 500, 20000);
             blacklistedMods = b.comment("Mod IDs of mods that won't be scanned").define("blacklistedMods",
                     Arrays.asList("flatcoloredblocks", "chisel", "xtones", "wallpapercraft", "sonarcore",
                             "microblockcbe"));
-            allStates = b.comment("Only default blockstate of a block is used to calculate the drops",
+            allStates = b.comment("Only one blockstate of a block is used to calculate the drops",
                     "Should ordinarily not affect the calculation", "(enable this if you miss some drops)")
                     .define("allStates", false);
             return null;
@@ -154,6 +153,7 @@ public class BlockDrops {
         List<DropRecipe> result = new ArrayList<>();
         ServerWorld world = event.getServer().getWorld(DimensionType.OVERWORLD);
         Stopwatch sw = Stopwatch.createStarted();
+        LOG.info("Block drop calculation started...");
         for (Block block : ForgeRegistries.BLOCKS) {
             if (allowedIDs.contains(block.getRegistryName().getNamespace())) {
                 List<BlockState> validStates = block.getStateContainer().getValidStates();
@@ -175,7 +175,7 @@ public class BlockDrops {
                 }
             }
         }
-        System.out.println(sw.elapsed(TimeUnit.MILLISECONDS) + " millis");
+        LOG.info("Block drop calculation finished after {} milliseconds.", sw.elapsed(TimeUnit.MILLISECONDS));
         return result;
     }
 

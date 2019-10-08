@@ -1,7 +1,6 @@
 package kdp.blockdrops;
 
 import java.text.DecimalFormat;
-import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
