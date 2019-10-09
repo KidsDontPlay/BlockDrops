@@ -32,8 +32,6 @@ import net.minecraft.item.Items;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.JsonToNBT;
 import net.minecraft.nbt.ListNBT;
-import net.minecraft.server.dedicated.DedicatedServer;
-import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.NonNullList;
 import net.minecraft.util.ResourceLocation;
@@ -187,7 +185,7 @@ public class BlockDrops {
             ItemStack show;
             try {
                 show = getItemForBlock(state, world);
-            } catch (RuntimeException e) {
+            } catch (RuntimeException | NoSuchMethodError e) {
                 return result;
             }
             if (show.isEmpty()) {
@@ -309,15 +307,15 @@ public class BlockDrops {
             }
         }
         recipes = allRecipes;
-        if (event.getServer() instanceof IntegratedServer) {
+        if (event.getServer().isSinglePlayer()) {
             Plugin.recipes = recipes;
         }
     }
 
     @SubscribeEvent
     public void construct(PlayerEvent.PlayerLoggedInEvent event) {
-        if (event.getEntity() instanceof ServerPlayerEntity && ((ServerPlayerEntity) event
-                .getEntity()).server instanceof DedicatedServer) {
+        if (event.getEntity() instanceof ServerPlayerEntity && !((ServerPlayerEntity) event.getEntity()).server
+                .isSinglePlayer()) {
             simpleChannel.send(PacketDistributor.PLAYER.with(() -> (ServerPlayerEntity) event.getEntity()),
                     new SyncMessage(recipes));
         }
