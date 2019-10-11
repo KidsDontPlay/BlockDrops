@@ -17,7 +17,7 @@ apply plugin: 'idea'
 Properties props = new Properties()
 props.load(new BufferedReader(new FileReader(file('../gradle.properties'))))
 
-version = "${props.get('mc_version')}-1.0.1"
+version = "${props.get('mc_version')}-1.0.2"
 group = 'kdp.blockdrops'
 archivesBaseName = 'blockdrops'
 

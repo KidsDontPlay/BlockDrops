@@ -28,7 +28,6 @@ import net.minecraft.inventory.EquipmentSlotType;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.JsonToNBT;
 import net.minecraft.nbt.ListNBT;
@@ -43,6 +42,7 @@ import net.minecraft.world.storage.loot.LootContext;
 import net.minecraft.world.storage.loot.LootParameters;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.common.util.FakePlayer;
 import net.minecraftforge.common.util.FakePlayerFactory;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -51,7 +51,6 @@ import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.server.FMLServerStartingEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.fml.loading.moddiscovery.ModInfo;
 import net.minecraftforge.fml.network.NetworkRegistry;
 import net.minecraftforge.fml.network.PacketDistributor;
@@ -80,9 +79,9 @@ public class BlockDrops {
     private static ForgeConfigSpec.IntValue iterations;
     private static ForgeConfigSpec.ConfigValue<List<String>> blacklistedMods;
 
-    public static UUID uuid = UUID.fromString("1ef41968-f9b8-4350-834e-367f49476a56");
+    public static final UUID uuid = UUID.fromString("1ef41968-f9b8-4350-834e-367f49476a56");
 
-    private static Hash.Strategy<ItemStack> strategy = new Hash.Strategy<ItemStack>() {
+    private static final Hash.Strategy<ItemStack> strategy = new Hash.Strategy<ItemStack>() {
         @Override
         public int hashCode(ItemStack o) {
             return o == null || o.isEmpty() ? 0 : o.getItem().hashCode();
@@ -93,11 +92,12 @@ public class BlockDrops {
             return a != null && b != null && a.getItem() == b.getItem();
         }
     };
+    private static final Tool toolItem = new Tool();
 
     private static Path recipesPath;
 
     private static final String VERSION = "1.0";
-    private static SimpleChannel simpleChannel = NetworkRegistry
+    private static final SimpleChannel simpleChannel = NetworkRegistry
             .newSimpleChannel(new ResourceLocation(MOD_ID, "ch1"), () -> VERSION, VERSION::equals, VERSION::equals);
 
     private static List<DropRecipe> recipes = Collections.emptyList();
@@ -124,7 +124,7 @@ public class BlockDrops {
         });
         ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, pairClient.getValue());
         MinecraftForge.EVENT_BUS.register(this);
-        FMLJavaModLoadingContext.get().getModEventBus().register(this);
+
         recipesPath = Paths.get("config", MOD_ID + ".txt");
         simpleChannel.registerMessage(0, SyncMessage.class, (m, pb) -> {
             ListNBT listNBT = new ListNBT();
@@ -150,6 +150,7 @@ public class BlockDrops {
     public static List<DropRecipe> getAllRecipes(Set<String> allowedIDs, FMLServerStartingEvent event) {
         List<DropRecipe> result = new ArrayList<>();
         ServerWorld world = event.getServer().getWorld(DimensionType.OVERWORLD);
+        FakePlayer player = FakePlayerFactory.get(world, new GameProfile(uuid, "Hacker"));
         Stopwatch sw = Stopwatch.createStarted();
         LOG.info("Block drop calculation started...");
         for (Block block : ForgeRegistries.BLOCKS) {
@@ -163,7 +164,7 @@ public class BlockDrops {
                 }
                 Set<String> dropStrings = new HashSet<>();
                 for (BlockState state : validStates) {
-                    List<Drop> drops = getDrops(state, event);
+                    List<Drop> drops = getDrops(state, world, player);
                     String ds = drops.toString();
                     if (drops.isEmpty() || dropStrings.contains(ds)) {
                         continue;
@@ -177,11 +178,9 @@ public class BlockDrops {
         return result;
     }
 
-    private static List<Drop> getDrops(BlockState state, FMLServerStartingEvent event) {
+    private static List<Drop> getDrops(BlockState state, ServerWorld world, FakePlayer player) {
         try {
             List<Drop> result = new ArrayList<>();
-            ServerWorld world = event.getServer().getWorld(DimensionType.OVERWORLD);
-            ServerPlayerEntity player = FakePlayerFactory.get(world, new GameProfile(uuid, "Hacker"));
             ItemStack show;
             try {
                 show = getItemForBlock(state, world);
@@ -191,18 +190,19 @@ public class BlockDrops {
             if (show.isEmpty()) {
                 return result;
             }
-            boolean eventCrashed = false;
             int iteration = iterations.get();
             Int2ObjectOpenHashMap<Object2IntOpenCustomHashMap<ItemStack>> resultMap = new Int2ObjectOpenHashMap<>();
             Int2ObjectOpenHashMap<Object2ObjectOpenCustomHashMap<ItemStack, MutablePair<Integer, Integer>>> minmaxs = new Int2ObjectOpenHashMap<>();
             for (int fortune = 0; fortune < 4; fortune++) {
-                ItemStack tool = new ItemStack(Items.DIAMOND_PICKAXE);
+                ItemStack tool = new ItemStack(toolItem);
                 if (fortune > 0) {
                     tool.addEnchantment(Enchantments.FORTUNE, fortune);
                 }
                 TileEntity tile = null;
                 try {
                     tile = state.createTileEntity(world);
+                    tile.setWorld(world);
+                    tile.setPos(BlockPos.ZERO);
                 } catch (Exception ignored) {
                 }
                 player.setItemStackToSlot(EquipmentSlotType.MAINHAND, tool);
@@ -216,11 +216,11 @@ public class BlockDrops {
                 Object2ObjectOpenCustomHashMap<ItemStack, MutablePair<Integer, Integer>> minmax = new Object2ObjectOpenCustomHashMap<>(
                         strategy);
                 minmax.defaultReturnValue(MutablePair.of(9999, 0));
+                boolean eventCrashed = false;
                 for (int i = 0; i < iteration; i++) {
                     NonNullList<ItemStack> drops = NonNullList.create();
                     drops.addAll(state.getDrops(builder));
-                    /*TODO enable
-                    if (!eventCrashed) {
+                    /*if (!eventCrashed) {
                         try {
                             ForgeEventFactory
                                     .fireBlockHarvesting(drops, world, BlockPos.ZERO, state, fortune, 1F, false,
@@ -280,8 +280,8 @@ public class BlockDrops {
     @SubscribeEvent
     public void serverStart(FMLServerStartingEvent event) throws IOException, CommandSyntaxException {
         List<DropRecipe> allRecipes;
-        String hash = ModList.get().getMods().stream()
-                .mapToInt(mi -> mi.getModId().hashCode() ^ mi.getVersion().hashCode()).sum() + "";
+        String hash = ModList.get().getMods().stream().map(mi -> "{" + mi.getModId() + ":" + mi.getVersion() + "}")
+                .sorted().collect(Collectors.joining(","));
         List<String> strings = null;
         boolean calculate = Files.notExists(recipesPath);
         if (!calculate) {
@@ -320,5 +320,4 @@ public class BlockDrops {
                     new SyncMessage(recipes));
         }
     }
-
 }
