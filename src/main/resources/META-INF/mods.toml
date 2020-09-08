@@ -1,0 +1,33 @@
+modLoader="javafml"
+loaderVersion="[32,)"
+issueTrackerURL="http://my.issue.tracker/"
+
+[[mods]]
+modId="blockdrops"
+version="2.0.2"
+displayName="Block Drops"
+displayURL="https://www.curseforge.com/minecraft/mc-mods/blockdrops"
+credits="Thanks for this example mod goes to Java"
+authors="KidsDontPlay, MorningSage"
+description='''
+
+'''
+
+[[dependencies.blockdrops]]
+    modId="forge"
+    mandatory=true
+    versionRange="[32,)"
+    ordering="NONE"
+    side="BOTH"
+[[dependencies.blockdrops]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.16,)"
+    ordering="NONE"
+    side="BOTH"
+[[dependencies.blockdrops]]
+    modId="jei"
+    mandatory=true
+    versionRange="[7.0.1.10,)"
+    ordering="NONE"
+    side="BOTH"
