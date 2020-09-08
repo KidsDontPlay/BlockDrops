@@ -5,6 +5,7 @@ import java.util.Arrays;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.IntArrayNBT;
+import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.common.util.INBTSerializable;
 import net.minecraftforge.items.ItemHandlerHelper;
 
@@ -16,6 +17,7 @@ public class Drop implements INBTSerializable<CompoundNBT> {
     private final Int2FloatLinkedOpenHashMap chances = new Int2FloatLinkedOpenHashMap();
     private final Int2IntLinkedOpenHashMap mins = new Int2IntLinkedOpenHashMap();
     private final Int2IntLinkedOpenHashMap maxs = new Int2IntLinkedOpenHashMap();
+    public static final Drop EMPTY = new Drop();
 
     public Drop(ItemStack out) {
         this.out = ItemHandlerHelper.copyStackWithSize(out, 1);
@@ -42,7 +44,8 @@ public class Drop implements INBTSerializable<CompoundNBT> {
 
     @Override
     public String toString() {
-        return out.getItem().getRegistryName().toString();
+        ResourceLocation name = out.getItem().getRegistryName();
+        return name == null ? "" : name.toString();
     }
 
     @Override

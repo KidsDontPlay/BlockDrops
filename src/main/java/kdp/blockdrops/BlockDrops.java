@@ -28,6 +28,8 @@ import net.minecraft.inventory.EquipmentSlotType;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.loot.LootContext;
+import net.minecraft.loot.LootParameters;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.JsonToNBT;
 import net.minecraft.nbt.ListNBT;
@@ -36,10 +38,7 @@ import net.minecraft.util.NonNullList;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
-import net.minecraft.world.dimension.DimensionType;
 import net.minecraft.world.server.ServerWorld;
-import net.minecraft.world.storage.loot.LootContext;
-import net.minecraft.world.storage.loot.LootParameters;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.util.FakePlayer;
@@ -134,12 +133,17 @@ public class BlockDrops {
             pb.writeCompoundTag(tag);
         }, pb -> {
             SyncMessage m = new SyncMessage();
-            ListNBT listNBT = (ListNBT) pb.readCompoundTag().get("list");
-            m.recipes = listNBT.stream().map(n -> {
-                DropRecipe r = new DropRecipe();
-                r.deserializeNBT((CompoundNBT) n);
-                return r;
-            }).collect(Collectors.toList());
+            CompoundNBT nbt = pb.readCompoundTag();
+            if (nbt != null) {
+                ListNBT listNBT = (ListNBT) nbt.get("list");
+                if (listNBT != null) {
+                    m.recipes = listNBT.stream().map(n -> {
+                        DropRecipe r = new DropRecipe();
+                        r.deserializeNBT((CompoundNBT) n);
+                        return r;
+                    }).collect(Collectors.toList());
+                }
+            }
             return m;
         }, (m, s) -> {
             s.get().enqueueWork(() -> Plugin.recipes = m.recipes);
@@ -149,12 +153,12 @@ public class BlockDrops {
 
     public static List<DropRecipe> getAllRecipes(Set<String> allowedIDs, FMLServerStartingEvent event) {
         List<DropRecipe> result = new ArrayList<>();
-        ServerWorld world = event.getServer().getWorld(DimensionType.OVERWORLD);
+        ServerWorld world = event.getServer().getWorld(World.field_234918_g_);
         FakePlayer player = FakePlayerFactory.get(world, new GameProfile(uuid, "Hacker"));
         Stopwatch sw = Stopwatch.createStarted();
         LOG.info("Block drop calculation started...");
         for (Block block : ForgeRegistries.BLOCKS) {
-            if (allowedIDs.contains(block.getRegistryName().getNamespace())) {
+            if (block.getRegistryName() != null && allowedIDs.contains(block.getRegistryName().getNamespace())) {
                 List<BlockState> validStates = block.getStateContainer().getValidStates();
                 if (!allStates.get()) {
                     validStates = Collections.singletonList(validStates.get(validStates.size() - 1));
@@ -201,8 +205,7 @@ public class BlockDrops {
                 TileEntity tile = null;
                 try {
                     tile = state.createTileEntity(world);
-                    tile.setWorld(world);
-                    tile.setPos(BlockPos.ZERO);
+                    if (tile != null) tile.setWorldAndPos(world, BlockPos.ZERO);
                 } catch (Exception ignored) {
                 }
                 player.setItemStackToSlot(EquipmentSlotType.MAINHAND, tool);
@@ -216,23 +219,11 @@ public class BlockDrops {
                 Object2ObjectOpenCustomHashMap<ItemStack, MutablePair<Integer, Integer>> minmax = new Object2ObjectOpenCustomHashMap<>(
                         strategy);
                 minmax.defaultReturnValue(MutablePair.of(9999, 0));
-                boolean eventCrashed = false;
                 for (int i = 0; i < iteration; i++) {
                     NonNullList<ItemStack> drops = NonNullList.create();
                     drops.addAll(state.getDrops(builder));
-                    /*if (!eventCrashed) {
-                        try {
-                            ForgeEventFactory
-                                    .fireBlockHarvesting(drops, world, BlockPos.ZERO, state, fortune, 1F, false,
-                                            player);
-                        } catch (Exception e) {
-                            eventCrashed = true;
-                        }
-                    }*/
                     for (ItemStack drop : drops) {
-                        if (drop.isEmpty()) {
-                            continue;
-                        }
+                        if (drop.isEmpty()) continue;
                         if (all.get() || drop.getItem() != show.getItem() || !(show.getItem() instanceof BlockItem)) {
                             stacks.addTo(drop, drop.getCount());
                             minmax.merge(drop, MutablePair.of(drop.getCount(), drop.getCount()), (pOld, pNew) -> {
@@ -256,8 +247,7 @@ public class BlockDrops {
                             drop.getChances().put(fortune, resultMap.get(fortune).getInt(s) / (float) iteration);
                             drop.getMaxs().put(fortune, minmaxs.get(fortune).get(s).getRight().intValue());
                             drop.getMins().put(fortune, drop.getChances().get(fortune) < 1F ?
-                                    0 :
-                                    minmaxs.get(fortune).get(s).getLeft().intValue());
+                                0 : minmaxs.get(fortune).get(s).getLeft());
                         }
                         result.add(drop);
                     });
@@ -270,6 +260,7 @@ public class BlockDrops {
     }
 
     private static ItemStack getItemForBlock(BlockState state, World world) {
+        @SuppressWarnings("deprecation")
         ItemStack item2 = state.getBlock().getItem(world, BlockPos.ZERO, state);
         if (item2.getItem() instanceof BlockItem && ((BlockItem) item2.getItem()).getBlock() == state.getBlock()) {
             return item2;

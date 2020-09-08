@@ -10,7 +10,7 @@ import net.minecraft.item.ToolItem;
 import net.minecraft.item.crafting.Ingredient;
 
 public class Tool extends ToolItem {
-    private static IItemTier tier = new IItemTier() {
+    private static final IItemTier tier = new IItemTier() {
         @Override
         public int getMaxUses() {
             return Integer.MAX_VALUE;
@@ -37,6 +37,7 @@ public class Tool extends ToolItem {
         }
 
         @Override
+        @SuppressWarnings("NullableProblems")
         public Ingredient getRepairMaterial() {
             return null;
         }

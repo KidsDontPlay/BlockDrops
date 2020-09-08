@@ -5,13 +5,16 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.mojang.blaze3d.matrix.MatrixStack;
+import mcp.MethodsReturnNonnullByDefault;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.AbstractGui;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.text.ITextComponent;
+import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.util.text.TextFormatting;
-import net.minecraftforge.fml.client.config.GuiButtonExt;
-import net.minecraftforge.fml.client.config.GuiUtils;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.lwjgl.glfw.GLFW;
@@ -26,6 +29,10 @@ import mezz.jei.api.recipe.category.IRecipeCategory;
 import mezz.jei.gui.elements.DrawableBlank;
 import mezz.jei.gui.recipes.IRecipeLogicStateListener;
 
+import javax.annotation.ParametersAreNonnullByDefault;
+
+@ParametersAreNonnullByDefault
+@MethodsReturnNonnullByDefault
 public class Category implements IRecipeCategory<DropRecipe> {
     private static final ResourceLocation hopper = new ResourceLocation("textures/gui/container/hopper.png");
     private static final DecimalFormat format = new DecimalFormat("#.##");
@@ -53,28 +60,30 @@ public class Category implements IRecipeCategory<DropRecipe> {
 
     @Override
     public IDrawable getIcon() {
+        //noinspection ConstantConditions
         return null;
     }
 
+
+
     @Override
-    public void draw(DropRecipe recipe, double mouseX, double mouseY) {
-        drawSlot(81, 1);
-        for (int i = 9; i < 170; i += 18)
-            drawSlot(i, 20);
+    public void draw(DropRecipe recipe, MatrixStack matrixStack, double mouseX, double mouseY) {
+        drawSlot(matrixStack, 81, 1);
+        for (int i = 9; i < 170; i += 18) drawSlot(matrixStack, i, 20);
         Pair<Button, Button> pair = buttonMap.get(recipe);
         if (pair == null) {
             pair = Pair.of(new Button(0, 23, ""), new Button(172, 23, ""));
             buttonMap.put(recipe, pair);
         }
-        pair.getLeft().visible = recipe.getIndex() > 0;
-        pair.getRight().visible = recipe.getIndex() < recipe.getMaxIndex();
-        pair.getLeft().renderButton((int) mouseX, (int) mouseY, 0);
-        pair.getRight().renderButton((int) mouseX, (int) mouseY, 0);
+        //pair.getLeft().visible = recipe.getIndex() > 0;
+        //pair.getRight().visible = recipe.getIndex() < recipe.getMaxIndex();
+        if (recipe.getIndex() > 0) pair.getLeft().renderButton(matrixStack, (int) mouseX, (int) mouseY, 0);
+        if (recipe.getIndex() < recipe.getMaxIndex()) pair.getRight().renderButton(matrixStack, (int) mouseX, (int) mouseY, 0);
     }
 
-    private void drawSlot(int x, int y) {
+    private void drawSlot(MatrixStack matrixStack, int x, int y) {
         Minecraft.getInstance().getTextureManager().bindTexture(hopper);
-        GuiUtils.drawTexturedModalRect(x, y, 43, 19, 18, 18, 0);
+        AbstractGui.blit(matrixStack, x, y, 43, 19, 18, 18, 256, 256);
     }
 
     @Override
@@ -92,7 +101,7 @@ public class Category implements IRecipeCategory<DropRecipe> {
             stackGroup.init(i + 1, false, 9 + i * 18, 20);
             stackGroup.set(i + 1, recipe.getOutputs().get((i + recipe.getIndex())));
         }
-        stackGroup.addTooltipCallback((int slotIndex, boolean input, ItemStack ingredient, List<String> tooltip) -> {
+        stackGroup.addTooltipCallback((int slotIndex, boolean input, ItemStack ingredient, List<ITextComponent> tooltip) -> {
             if (!input) {
                 Drop d = recipe.getDropForItem(ingredient);
                 boolean one = d.getChances().values().stream().distinct().count() == 1;
@@ -104,11 +113,9 @@ public class Category implements IRecipeCategory<DropRecipe> {
                             "Min: " + d.getMins().get(x) + " Max: " + d.getMaxs().get(x) :
                             "";
                     if (!chance.isEmpty() || !minmax.isEmpty()) {
-                        tooltip.add((one ?
-                                "" :
-                                TextFormatting.BLUE + "Fortune " + (0 != x ?
-                                        I18n.format("enchantment.level." + x) :
-                                        0) + " ") + TextFormatting.GRAY + chance + minmax);
+                        String text = "";
+                        if (!one) text = TextFormatting.BLUE + "Fortune " + (0 != x ? I18n.format("enchantment.level." + x) : 0) + " ";
+                        tooltip.add(new StringTextComponent(text + TextFormatting.GRAY + chance + minmax));
                     }
                 }
             }
@@ -118,26 +125,30 @@ public class Category implements IRecipeCategory<DropRecipe> {
     @Override
     public boolean handleClick(DropRecipe recipe, double mouseX, double mouseY, int mouseButton) {
         Pair<Button, Button> pair = buttonMap.get(recipe);
-        if (pair != null//
-                && (pair.getLeft().isHovered()//
-                || pair.getRight().isHovered())//
+        if (pair != null
+                && (pair.getLeft().isHovered()
+                || pair.getRight().isHovered())
                 && mouseButton == GLFW.GLFW_MOUSE_BUTTON_1) {
             if (pair.getLeft().isHovered()) {
                 recipe.decreaseIndex();
             } else {
                 recipe.increaseIndex();
             }
-            Minecraft.getInstance().enqueue(() ->//
-                    ((IRecipeLogicStateListener) Minecraft.getInstance().currentScreen).onStateChange());
+            Minecraft.getInstance().enqueue(() -> {
+                if (Minecraft.getInstance().currentScreen != null) {
+                    ((IRecipeLogicStateListener) Minecraft.getInstance().currentScreen).onStateChange();
+                }
+            });
+
             return true;
         }
         return false;
     }
 
-    private static class Button extends GuiButtonExt {
+    private static class Button extends net.minecraft.client.gui.widget.button.Button {
 
         Button(int xPos, int yPos, String displayString) {
-            super(xPos, yPos, 8, 12, displayString, null);
+            super(xPos, yPos, 8, 12, new StringTextComponent(displayString), button -> { });
         }
 
         @Override
@@ -146,14 +157,14 @@ public class Category implements IRecipeCategory<DropRecipe> {
         }
 
         @Override
-        public void renderButton(int mouseX, int mouseY, float partial) {
-            super.renderButton(mouseX, mouseY, partial);
+        public void renderButton(MatrixStack matrixStack, int mouseX, int mouseY, float partial) {
+            super.renderButton(matrixStack, mouseX, mouseY, partial);
             if (visible) {
                 boolean left = this.x == 0;
                 if (left) {
-                    Internal.getTextures().getArrowPrevious().draw(0, 24);
+                    Internal.getTextures().getArrowPrevious().draw(matrixStack, 0, 24);
                 } else {
-                    Internal.getTextures().getArrowNext().draw(171, 24);
+                    Internal.getTextures().getArrowNext().draw(matrixStack, 171, 24);
                 }
             }
         }

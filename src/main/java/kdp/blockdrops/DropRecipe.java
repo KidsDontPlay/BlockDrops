@@ -19,7 +19,7 @@ public class DropRecipe implements INBTSerializable<CompoundNBT> {
 
     private ItemStack in;
     private List<Drop> drops;
-    private Cache<ItemStack, Drop> cache = CacheBuilder.newBuilder().build();
+    private final Cache<ItemStack, Drop> cache = CacheBuilder.newBuilder().build();
     //client only
     private int index, maxIndex;
 
@@ -51,8 +51,7 @@ public class DropRecipe implements INBTSerializable<CompoundNBT> {
 
     public Drop getDropForItem(ItemStack stack) {
         try {
-            return cache.get(stack,
-                    () -> drops.stream().filter(drop -> drop.getOut().isItemEqual(stack)).findFirst().get());
+            return cache.get(stack, () -> drops.stream().filter(drop -> drop.getOut().isItemEqual(stack)).findFirst().orElse(Drop.EMPTY));
         } catch (ExecutionException e) {
             throw new RuntimeException(e);
         }
