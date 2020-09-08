@@ -240,17 +240,17 @@ public class BlockDrops {
             ObjectOpenCustomHashSet<ItemStack> allStacks = new ObjectOpenCustomHashSet<>(strategy);
             resultMap.values().forEach(map -> allStacks.addAll(map.keySet()));
             allStacks.stream()//
-                    .sorted(Comparator.comparingInt(s -> Item.getIdFromItem(s.getItem())))//
-                    .forEach(s -> {
-                        Drop drop = new Drop(s);
-                        for (int fortune = 0; fortune < 4; fortune++) {
-                            drop.getChances().put(fortune, resultMap.get(fortune).getInt(s) / (float) iteration);
-                            drop.getMaxs().put(fortune, minmaxs.get(fortune).get(s).getRight().intValue());
-                            drop.getMins().put(fortune, drop.getChances().get(fortune) < 1F ?
-                                0 : minmaxs.get(fortune).get(s).getLeft());
-                        }
-                        result.add(drop);
-                    });
+                .sorted(Comparator.comparingInt(s -> Item.getIdFromItem(s.getItem())))//
+                .forEach(s -> {
+                    Drop drop = new Drop(s);
+                    for (int fortune = 0; fortune < 4; fortune++) {
+                        drop.getChances().put(fortune, resultMap.get(fortune).getInt(s) / (float) iteration);
+                        drop.getMaxs().put(fortune, minmaxs.get(fortune).get(s).getRight().intValue());
+                        drop.getMins().put(fortune, drop.getChances().get(fortune) < 1F ?
+                            0 : minmaxs.get(fortune).get(s).getLeft().intValue());
+                    }
+                    result.add(drop);
+                });
             return result;
         } catch (Exception e) {
             LOG.info("Error ({} : {}) while calculating drops for {}", e.getClass().getSimpleName(), e.getMessage(),
